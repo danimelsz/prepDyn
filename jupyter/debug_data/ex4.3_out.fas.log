@@ -1,0 +1,16 @@
+Command used: addSeq(alignment=..., new_seqs=..., output='debug_data/ex4.3_out.fas', write_names=True, orphan_threshold=0, log=True, n2question=None, gaps2question=None)
+
+Input alignment: 3 sequences
+Input alignment: 2 # columns
+Input new sequences: 2 sequences
+Final alignment: 5 sequences
+Final alignment: 15 columns
+Final alignment: 2 # columns
+
+Trimmed orphan blocks from new sequences:
+None
+
+Gap block replacements:
+sp4: ? block at positions 0-1 (length=1)
+
+Runtime: 0.61 seconds
