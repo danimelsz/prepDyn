@@ -45,7 +45,7 @@ conda install conda-forge::termcolor
 Finally, clone the **prepDyn** repository using the command:
 
 ```
-git clone https://github.com/danimelsz/PrepDyn.git
+git clone https://github.com/dnakamuraz/PrepDyn.git
 ```
 
 ## Usage
