@@ -49,7 +49,7 @@ git clone https://github.com/dnakamuraz/PrepDyn.git
 
 ## Usage
 
-**prepDyn** is organized in four Python scripts in the directory src:
+**prepDyn** is organized in four stand-alone Python scripts in the directory src:
 - `prepDyn.py`: the main script integrating the pipeline.
 - `GB2MSA.py`: script to download sequences from GenBank and identify internal missing data.
 - `addSeq.py`: script to align one or a few sequence(s) to a previously preprocessed (profile) alignment.
@@ -89,122 +89,9 @@ python src/addSeq.py -h
 python src/UP2AP.py -h
 ```
 
-The following examples are designed for users with little experience on Unix. If you have questions, send a message using **GitHub issues**. Do not move the scripts from the directory *src*, otherwise the modular structure will break.
+Check the [**Wiki**](https://github.com/dnakamuraz/prepDyn/wiki/Tutorials) page for a tutorial. If you have questions, send a message using **GitHub issues**. Do not move the scripts from the directory *src*, otherwise the modular structure will break.
 
-### Example 1: Simple example
-
-The basic use of `prepDyn.py` is running all four steps using a single command. Given an input CSV, whose first column is called *Terminals* and the other columns are the names of genes (each cell containing the correspondent GenBank accession number), the following command will download sequences, trim invariants and orphan nucleotides <10 bp in terminal positions, and identify missing data as *?* (all differences in sequence length in terminal positions are missing data). In the CSV file, if more than one GenBank accession number is specified in the same cell refering to non-overlapping fragments of the same gene (e.g. JX155817/JX155844), the space between them is automatically identified as internal missing data (?).
-
-<img src="figures/example_csv.png" alt="" width="300">
-
-```
-python src/prepDyn.py \
-    --GB_input test_data/tutorial/ex1.1/ex1.1_input.csv \
-    --output_file test_data/tutorial/ex1.1/ex1.1 \
-    --del_inv T \
-    --orphan_method integer \
-    --orphan_threshold 10 \
-    --partitioning_method None \
-    --log T 
-```
-
-We specified `paritioning_method None`, which means that partitioning was not performed. As a heuristic, we recommend testing the impact of adding pound signs to the tree optimality scores using a successive partitioning strategy. For instance, if you specify `partitioning_method conservative` and `partitioning_round 1`, the largest block(s) of contiguous invariants will be partitioned.
-
-```
-python src/prepDyn.py \
-    --input_file test_data/tutorial/ex1.2/ex1.2_input.fasta \
-    --output_file test_data/tutorial/ex1.2/ex1.2 \
-    --partitioning_method balanced \
-    --partitioning_round 1 \
-    --log T
-```
-
-This process can continue until tree costs reported by POY/PhyG remain stationary. For instance, `partitioning_round 2` inserts pound signs in the 1- and 2-largest block(s) of contiguous invariants. 
-
-```
-python src/prepDyn.py \
-    --input_file test_data/tutorial/ex1.2/ex1.2_input.fasta \
-    --output_file test_data/tutorial/ex1.3/ex1.3 \
-    --partitioning_method balanced \
-    --partitioning_round 2 \
-    --log T
-```
-After tree-alignment, if the tree cost from `partitioning_round 2` is higher than that from `partitioning_round 1`, the analysis can stop. Otherwise, the analysis can proceed with `partitioning_round 3` (and so on).
-
-```
-python src/prepDyn.py \
-    --input_file test_data/tutorial/ex1.2/ex1.2_input.fasta \
-    --output_file test_data/tutorial/ex1.4/ex1.4 \
-    --partitioning_method balanced \
-    --partitioning_round 3 \
-    --log T
-```
-
-Other methods of partitioning are also available (`conservative`, `equal`, `max`) and the user should explore whether they can reduce tree costs. Given the same parameters used for data collection, trimming, and identification of missing data, the different partitioning methods are comparable via tree costs.
-
-### Example 2: Multiple alignments
-
-Suppose you have a phylogenomic dataset with hundreds of gene alignmens in the directory *./data/*. Phylogenomic datasets are usually unavailable in GenBank, but are available in repositories like Dryad and Zenodo. You can preprocess all unaligned gene files in FASTA format using a single command:
-
-```
-python src/prepDyn.py \
-    --input_file test_data/tutorial/ex3.1/ \
-    --input_format fasta \
-    --output_file test_data/tutorial/ex3.1/out \
-    --MSA T \
-    --del_inv T \
-    --orphan_method integer --orphan_threshold 10 \
-    --internal_method semi --internal_threshold 15 \
-    --partitioning_method max
-```
-
-If the input files are already aligned, change the boolean parameter MSA to False to accelerate preprocessing:
-
-```
-python src/prepDyn.py \
-    --input_file test_data/tutorial/ex3.2/ \
-    --input_format fasta \
-    --output_file test_data/tutorial/ex3.2/ \
-    --MSA F \
-    --del_inv T \
-    --orphan_method integer --orphan_threshold 10 \
-    --internal_method semi --internal_threshold 15 \
-    --log T
-```
-
-### Example 3: Appending new sequences to a profile alignment
-
- MAFFT is unable to align sequences if pound signs or question marks are present. This is a problem when we try to align new sequences to a prevously preprocessed alignment for dynamic homology. To avoid manual alignment by eye, addSeq.py allows aligning new sequences to profile alignments. Gaps, missing data, and pound signs are not modified for the sequences present in the profile alignment--they are only inserted in the new sequences.
-
-A simple example:
-
-```
-python src/addSeq.py \
-    --alignment test_data/tutorial/ex4.1/ex4.1_aln.fas \
-    --new_seqs test_data/tutorial/ex4.1/ex4.1_new_seqs.fas \
-    --output test_data/tutorial/ex4.1/ex4.1_out.fas \
-    --log True
-```
-
-A more complex example, where new sequences were preprocessed using trimming of blocks of orphan nucleotides of length lesser than 45 bp, replacement of internal blocks of gaps longer than 20 with question marks, and replacement of all IUPAC N with question marks in the sequence *Thoropa_miliaris_CFBH10125*:
-
-```
-python src/addSeq.py \
-    --alignment test_data/tutorial/ex4.2/ex4.2_aln.fas \
-    --new_seqs test_data/tutorial/ex4.2/ex4.2_new_seqs.fas \
-    --output test_data/tutorial/ex4.2/ex4.2_out.fas \
-    --orphan_threshold 45 \
-    --gaps2question 20 \
-    --n2question Thoropa_miliaris_CFBH10125 \
-    --write_names True \
-    --log True
-```
-
-Warning: The input `new_seqs` cannot be longer than the input profile `alignment`.
-
-When the input sequences in the parameter `alignment` of `addSeq.py` are not aligned and contain pound signs to delimit partitions, MAFFT and other aligners crash. In this case, use `UP2AP.py` to convert unaligned sequences containing pound signs (UP) into aligned sequences with pound signs (AP). Finally, use the output from `UP2AP.py` as input `alignment` of `addSeq.py`.
-
-## Cite
+## Citation
 
 If you use **prepDyn** in your research, cite this repository.
 
