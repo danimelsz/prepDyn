@@ -1,4 +1,4 @@
-# Preprocessing dynamic characters for tree-alignment <img src="figures/logo.jpg" alt="" width="900">
+# Preprocessing dynamic characters <img src="figures/logo.jpg" align="right" width="100">
 
 
 [![language](https://img.shields.io/badge/language-python-green?style=flat&logo=python&logoColor=green)](https://www.python.org)
