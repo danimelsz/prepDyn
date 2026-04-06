@@ -55,6 +55,16 @@ git clone https://github.com/dnakamuraz/PrepDyn.git
 - `addSeq.py`: script to align one or a few sequence(s) to a previously preprocessed (profile) alignment.
 - `UP2AP.py`: script to align sequences containing pound signs.
 
+The main script is `prepDyn.py`, which comprises four steps: 
+
+(1) Data collection: Based on a CSV dataframe containing GenBank accession numbers or FASTA sequences in a local directory
+
+(2) Trimming: Ddeletion of flanking invariants and orphan nucleotides
+
+(3) Identification of missing data: Internal missing data identified in the first step or specified by the user; flanking gaps are automatically corrected to missing characters
+
+(4) Successive partitioning: Pound signs are inserted sucessively until tree costs stabilize. Position of pound signs defined by partitioning strategies (balanced, conservative, equal-length, and maximum), which are competitive via tree costs. Recommended for large datasets.
+
 A summary of parameters used in `prepDyn.py`:
 
 | **Parameter**            | **Type**              | **Default**  | **Description**                                                                   |
@@ -88,6 +98,8 @@ python src/GB2MSA.py -h
 python src/addSeq.py -h
 python src/UP2AP.py -h
 ```
+
+## Tutorial
 
 Check the [**Wiki**](https://github.com/dnakamuraz/prepDyn/wiki/Tutorials) page for a tutorial. If you have questions, send a message using **GitHub issues**. Do not move the scripts from the directory *src*, otherwise the modular structure will break.
 
