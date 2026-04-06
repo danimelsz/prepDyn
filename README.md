@@ -50,22 +50,24 @@ git clone https://github.com/dnakamuraz/PrepDyn.git
 ## Usage
 
 **prepDyn** is organized in four stand-alone Python scripts in the directory src:
-- `prepDyn.py`: the main script integrating the pipeline.
-- `GB2MSA.py`: script to download sequences from GenBank and identify internal missing data.
-- `addSeq.py`: script to align one or a few sequence(s) to a previously preprocessed (profile) alignment.
-- `UP2AP.py`: script to align sequences containing pound signs.
+| Script        | Description                                                                 |
+|----------------|-----------------------------------------------------------------------------|
+| `prepDyn.py`   | The main script integrating the pipeline.                                   |
+| `GB2MSA.py`    | Downloads sequences from GenBank and identifies internal missing data.     |
+| `addSeq.py`    | Aligns one or a few sequence(s) to a previously preprocessed alignment.    |
+| `UP2AP.py`     | Aligns sequences containing pound signs.                                    |
 
 The main script is `prepDyn.py`, which comprises four steps: 
 
-(1) Data collection: Based on a CSV dataframe containing GenBank accession numbers or FASTA sequences in a local directory
+- (1) Data collection: Based on a CSV dataframe containing GenBank accession numbers or FASTA sequences in a local directory
 
-(2) Trimming: Ddeletion of flanking invariants and orphan nucleotides
+- (2) Trimming: Ddeletion of flanking invariants and orphan nucleotides
 
-(3) Identification of missing data: Internal missing data identified in the first step or specified by the user; flanking gaps are automatically corrected to missing characters
+- (3) Identification of missing data: Internal missing data identified in the first step or specified by the user; flanking gaps are automatically corrected to missing characters
 
-(4) Successive partitioning: Pound signs are inserted sucessively until tree costs stabilize. Position of pound signs defined by partitioning strategies (balanced, conservative, equal-length, and maximum), which are competitive via tree costs. Recommended for large datasets.
+- (4) Successive partitioning: Pound signs are inserted sucessively until tree costs stabilize. Position of pound signs defined by partitioning strategies (balanced, conservative, equal-length, and maximum), which are competitive via tree costs. Recommended for large datasets.
 
-A summary of parameters used in `prepDyn.py`:
+A summary of parameters used in `prepDyn.py` are summarized below. Parameters can be either specified with long or short options.
 
 | **Parameter**            | **Type**              | **Default**  | **Description**                                                                   |
 | ------------------------ | --------------------- | ------------ | --------------------------------------------------------------------------------- |
@@ -90,14 +92,6 @@ A summary of parameters used in `prepDyn.py`:
 | `partitioning_round`     | `int`                 | `0`          | Number of partitions/rounds for relevant partitioning methods.                    |
 | `partitioning_size`      | `int`                 | –            | Partition size for `partitioning_method='equal'`.                                 |
 
-Parameters can be either specified with long or short options. For more information:
-
-```
-python src/prepDyn.py -h
-python src/GB2MSA.py -h
-python src/addSeq.py -h
-python src/UP2AP.py -h
-```
 
 ## Tutorial
 
