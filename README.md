@@ -61,7 +61,7 @@ The main script is `prepDyn.py`, which comprises four steps:
 
 - (1) Data collection: Based on a CSV dataframe containing GenBank accession numbers or FASTA sequences in a local directory
 
-- (2) Trimming: Ddeletion of flanking invariants and orphan nucleotides
+- (2) Trimming: Deletion of flanking invariants and orphan nucleotides
 
 - (3) Identification of missing data: Internal missing data identified in the first step or specified by the user; flanking gaps are automatically corrected to missing characters
 
