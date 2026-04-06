@@ -1,4 +1,4 @@
-# Preprocessing dynamic characters <img src="figures/logo.jpg" align="right" width="100">
+# Preprocessing dynamic characters <img src="figures/logo.jpg" align="right" width="120">
 
 
 [![language](https://img.shields.io/badge/language-python-green?style=flat&logo=python&logoColor=green)](https://www.python.org)
