@@ -49,7 +49,10 @@ git clone https://github.com/dnakamuraz/PrepDyn.git
 
 ## Usage
 
+<img src="figures/workflow.jpg" align="left" width="200">
+
 **prepDyn** is organized in four stand-alone Python scripts in the directory src:
+
 | Script        | Description                                                                 |
 |----------------|-----------------------------------------------------------------------------|
 | `prepDyn.py`   | The main script integrating the pipeline.                                   |
