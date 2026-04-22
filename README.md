@@ -70,7 +70,7 @@ The main script is `prepDyn.py`, which comprises four steps:
 
 - (4) Successive partitioning: Pound signs are inserted sucessively until tree costs stabilize. Position of pound signs defined by partitioning strategies (balanced, conservative, equal-length, and maximum), which are competitive via tree costs. Recommended for large datasets.
 
-A summary of parameters used in `prepDyn.py` are summarized [here](tables/parameters.md).
+A summary of parameters available in `prepDyn.py` is [here](tables/parameters.md).
 
 ## Tutorial
 
