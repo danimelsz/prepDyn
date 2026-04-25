@@ -7,7 +7,7 @@
 
 **prepDyn** is a collection of Python scripts to facilitate the preprocessing of input sequences for dynamic homology. 
 
-In dynamic homology, data should be preprocessed to distinguish differences in sequence length resulting from missing data or insertion-deletion events to avoid grouping from artifacts. However, previous empirical studies using POY (Wheeler et al. 2015) and PhyG (Wheeler et al. 2024) manually preprocessed data with varying approaches (e.g. Grant et al. 2006; Nakamura et al. 2025). Here we present **prepDyn**, a collection of Python scripts to facilitate the preprocessing of input sequences to POY/PhyG. The main script `prepDyn.py` comprises four steps: (1) data collection from GenBank, (2) trimming, (3) identification of missing data, and (4) partitioning.
+In dynamic homology, data should be preprocessed to distinguish differences in sequence length resulting from missing data or insertion-deletion events to avoid grouping from artifacts. However, previous empirical studies using POY and PhyG manually preprocessed data with varying approaches. Here we present **prepDyn**, a collection of Python scripts to facilitate the preprocessing of input sequences to POY/PhyG. The main script `prepDyn.py` comprises four steps: (1) data collection from GenBank, (2) trimming, (3) identification of missing data, and (4) partitioning.
 
 Copyright (C) Daniel Y. M. Nakamura 2025
 
@@ -79,13 +79,3 @@ Check the [**Wiki**](https://github.com/dnakamuraz/prepDyn/wiki/Tutorials) page 
 ## Citation
 
 If you use **prepDyn** in your research, cite this repository.
-
-## References
-
-Grant T et al. (2006) Phylogenetic systematics of dart-poison frogs and their relatives (Amphibia: Athesphatanura: Dendrobatidae). *Bull Am Mus Nat Hist* 2006(299):1-262.
-
-Nakamura DYM et al. (2025) Museomics reduces taxonomic inflation in the *Dendropsophus araguaya* complex (Hylinae: Dendropsophini) from the Cerrado. *Journal of Vertebrate Biology* 74:24112.
-
-Wheeler WC et al. (2015) POY version 5: phylogenetic analysis using dynamic homologies under multiple optimality criteria. *Cladistics* 31:189-196.
-
-Wheeler WC et al. (2024) PhylogeneticGraph (PhyG) a new phylogenetic graph search and optimization program. *Cladistics* 40(1):97-105.

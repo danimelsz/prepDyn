@@ -1,0 +1,19 @@
+--Input data
+set(seed:73412305) 
+set(outgroup:"sp4") 
+read("data.fas",tcm:(1,1))
+
+--Search
+build(distance, rdwag, replicates:1000)
+swap()
+refine(ga, generations:10, popsize:20, recombinations:100)
+
+select(best)
+select(unique)
+
+--Output files
+report("example1.tre", newick, graphs, nohtulabels, overwrite)
+report("example1.cons", newick, graphs, nohtulabels, reconcile, method:strict, overwrite)
+transform(staticApprox)
+report("example1_ia.ss", ia, concatenate, overwrite)
+report("example1_ia.events", concatenate, overwrite)

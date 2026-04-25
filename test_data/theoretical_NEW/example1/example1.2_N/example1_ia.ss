@@ -1,0 +1,9 @@
+Implied Alignments for Graph 0
+>sp1
+GGGGACGTCTTTAG
+>sp2
+GGGGAGGAANNNNN
+>sp3
+AAAAAAAANNNNNN
+>sp4
+AAAAAGGTTTCTAG

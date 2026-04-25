@@ -5,7 +5,7 @@
 #############
 
 # Set the working directory 
-setwd("/Users/labanfibios/Desktop/Doutorado/Project/B3_PrepDyn/GitHub/test_data/simulations_v1_R/")
+setwd("/Users/labanfibios/Desktop/Doutorado/Project/B3_PrepDyn/GitHub/test_data/simulations_R/")
 
 # Load required packages
 if (!require(ggplot2)) install.packages("ggplot2", dependencies = TRUE)
@@ -100,11 +100,11 @@ subset_df <- df[df$n_leaves == 80 & df$n_columns == 10000, ]
 min(subset_df$cost, na.rm = TRUE)
 max(subset_df$cost, na.rm = TRUE)
 
-# Cost
+# Cost (all data)
 model <- lm(log2(cost) ~ log2(n_leaves) + log2(n_columns) + log2(n_partitions), data = df)
 summary(model)
 
-# Plot: Cost vs Partitions, grouped by (n_leaves, n_columns)
+# Plot: Cost vs Partitions, grouped by (n_leaves, n_columns), all data
 df$group <- interaction(df$n_leaves, df$n_columns, drop = TRUE)
 p <- ggplot(df, aes(x = n_partitions, y = cost, color = group)) +
   geom_line() +
@@ -162,60 +162,27 @@ summary(model2)
 # Runtime ~ leaves + characters + partitions + leaves:partitions
 model3 <- lm(log2(swap_CPU_time) ~ log2(n_leaves) + log2(n_columns) + log2(n_partitions) + log2(n_leaves):log2(n_partitions), data = df)
 summary(model3)
-# Runtime ~ leaves + characters + partitions + leaves:characters
+# Runtime ~ leaves + characters + partitions + characters:partitions
 model4 <- lm(log2(swap_CPU_time) ~ log2(n_leaves) + log2(n_columns) + log2(n_partitions) + log2(n_columns):log2(n_partitions), data = df)
 summary(model4)
 # Runtime ~ leaves + characters + partitions
 model5 <- lm(log2(swap_CPU_time) ~ log2(n_leaves) + log2(n_columns) + log2(n_partitions), data = df)
 summary(model5)
-
-# NONLINEAR MODELS
-# Runtime ~ leaves * characters * partitions 
-model6 = gam(log2(swap_CPU_time) ~ s(log2(n_leaves),k=4) + 
-               s(log2(n_columns),k=3) + 
-               s(log2(n_partitions),k=8) +
-               te(log2(n_leaves),log2(n_partitions), k=c(4,8)) +
-               te(log2(n_columns),log2(n_partitions), k=c(3,8)) +
-               te(log2(n_columns),log2(n_partitions),log2(n_leaves), k=c(3,8,4)), 
-             data=df)
-summary(model6)
-# Runtime ~ leaves + characters + partitions + leaves:partitions + characters:partitions
-model7 = gam(log2(swap_CPU_time) ~ s(log2(n_leaves),k=4) + 
-               s(log2(n_columns),k=3) + 
-               s(log2(n_partitions),k=8) +
-               te(log2(n_leaves),log2(n_partitions), k=c(4,8)) +
-               te(log2(n_columns),log2(n_partitions), k=c(3,8)), 
-             data=df)
-summary(model7)
-# Runtime ~ leaves + characters + partitions + leaves:partitions
-model8 = gam(log2(swap_CPU_time) ~ s(log2(n_leaves),k=4) + 
-               s(log2(n_columns),k=3) + 
-               s(log2(n_partitions),k=8) +
-               te(log2(n_leaves),log2(n_partitions), k=c(4,8)), 
-             data=df)
-summary(model8)
-# Runtime ~ leaves + characters + partitions + characters:partitions
-model9 = gam(log2(swap_CPU_time) ~ s(log2(n_leaves),k=4) + 
-               s(log2(n_columns),k=3) + 
-               s(log2(n_partitions),k=8) +
-               te(log2(n_columns),log2(n_partitions), k=c(3,8)), 
-             data=df)
-summary(model9)
-# Runtime ~ leaves + characters + partitions
-model10 = gam(log2(swap_CPU_time) ~ s(log2(n_leaves),k=4) + 
-               s(log2(n_columns),k=3) + 
-
-                               s(log2(n_partitions),k=8), 
-             data=df)
-summary(model10)
+# Runtime ~ leaves
+model_l <- lm(log2(swap_CPU_time) ~ log2(n_leaves), data = df)
+summary(model_l)
+# Runtime ~ characters
+model_c <- lm(log2(swap_CPU_time) ~ log2(n_columns), data = df)
+summary(model_c)
+# Runtime ~ partitions
+model_p <- lm(log2(swap_CPU_time) ~ log2(n_partitions), data = df)
+summary(model_p)
 
 # MODEL SELECTION
-# AIC of linear models
+# AIC of multi-predictor models
 AIC(model1, model2, model3, model4, model5)
-# AIC of nonlinear models
-AIC(model6, model7, model8, model9, model10)
 # AIC of all models
-AIC(model1, model2, model3, model4, model5, model6, model7, model8, model9, model10)
+AIC(model1, model2, model3, model4, model5, model_l, model_c, model_p)
 
 # VISUALIZATION
 # Plot: time vs Partitions, grouped by (n_leaves, n_columns)
