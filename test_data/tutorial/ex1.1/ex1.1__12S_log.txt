@@ -1,5 +1,5 @@
 --- Command used ---
-prepDyn(GB_input='test_data/tutorial/ex1.1/ex1.1_input.csv', input_format='fasta', MSA=False, output_file='test_data/tutorial/ex1.1/ex1.1', output_format='fasta', log=True, sequence_names=True, orphan_method='integer', orphan_threshold=10, percentile=25.0, del_inv=True, internal_column_ranges='all', internal_leaves='all', partitioning_method='None', partitioning_round=0)
+prepDyn(GB_input='test_data/tutorial/ex1.1/ex1.1_input.csv', input_format='fasta', MSA=False, output_file='test_data/tutorial/ex1.1_/ex1.1_', output_format='fasta', log=True, sequence_names=True, orphan_method='integer', orphan_threshold=10, percentile=25.0, del_inv=True, internal_column_ranges='all', internal_leaves='all', partitioning_method='None', partitioning_round=0)
 
 --- Step 1: Summary before preprocessing ---
 No. sequences: 13
@@ -16,8 +16,6 @@ Total '?' characters: 740
 Total '-' characters in fully missing partitions: 0
 Combined total: 740
 
-
-
 --- Step 4: Partitioning ---
 Method used: None
 No partitions were inserted based on the criteria.
@@ -32,5 +30,5 @@ Total no. IUPAC N: 1
 Total no. missing values (?): 740
 
 --- Run time ---
-Wall-clock time: 0.18367720 seconds
-CPU time: 0.13946100 seconds
+Wall-clock time: 0.09638214 seconds
+CPU time: 0.09491500 seconds

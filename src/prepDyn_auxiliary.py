@@ -1214,6 +1214,58 @@ def remove_adjacent_pound_columns(alignment):
 
     return cleaned_alignment
 
+def get_pound_column_indices(alignment):
+    """
+    Return the indices of true partition columns, defined as columns made only of '#'.
+
+    Args:
+        alignment (dict): DNA alignment {sequence_id: sequence_string}
+
+    Returns:
+        list[int]: Zero-based column indices in the current alignment.
+    """
+    if not alignment:
+        return []
+
+    columns = list(zip(*alignment.values()))
+    return [i for i, col in enumerate(columns) if all(c == '#' for c in col)]
+
+def get_pound_column_indices_from_output_file(output_path, output_format):
+    """
+    Read the saved alignment file and return the indices of '#' in the final output.
+
+    Args:
+        output_path (str): Path to the written alignment file.
+        output_format (str): Biopython format used to read the alignment.
+
+    Returns:
+        list[int]: One-based column indices in the saved output alignment.
+    """
+    records = list(SeqIO.parse(output_path, output_format))
+    if not records:
+        return []
+
+    first_sequence = str(records[0].seq)
+    return [i + 1 for i, char in enumerate(first_sequence) if char == '#']
+
+def get_partition_sizes_from_output_file(output_path, output_format):
+    """
+    Read the saved alignment file and return the sizes of partitions delimited by '#'.
+
+    Args:
+        output_path (str): Path to the written alignment file.
+        output_format (str): Biopython format used to read the alignment.
+
+    Returns:
+        list[int]: Length of each partition in the saved output alignment.
+    """
+    records = list(SeqIO.parse(output_path, output_format))
+    if not records:
+        return []
+
+    first_sequence = str(records[0].seq)
+    return [len(part) for part in first_sequence.split('#')]
+
 def equal_length_partitioning(alignment, partitioning_size=None, partitioning_round=None, log=False):
     """
     Insert pound signs '#' into a DNA alignment at regular intervals, either:
@@ -1433,7 +1485,7 @@ def compute_summary_after(alignment):
     columns = list(zip(*alignment.values()))
     
     # Count columns that contain pound signs
-    total_pound = sum('#' in col for col in columns)
+    total_pound = len(get_pound_column_indices(alignment))
     
     # Alignment length excluding columns of only pound signs
     aln_length = len(columns)
@@ -1490,13 +1542,15 @@ def detect_fully_missing_partitions(alignment):
                 log_entries.append(f"{seq_id}: partition {i} ({start}–{end}, length {dash_count}) fully missing (all '-')")
             col_index += len(part) + 1  # +1 for the '#' removed in split
 
-    summary = (
-        f"Total '?' characters: {total_question_marks}\n"
-        f"Total '-' characters in fully missing partitions: {total_dash_from_missing_partitions}\n"
-        f"Combined total: {total_question_marks + total_dash_from_missing_partitions}\n"
-    )
+    summary_lines = [
+        f"Total '?' characters: {total_question_marks}",
+        f"Total '-' characters in fully missing partitions: {total_dash_from_missing_partitions}",
+        f"Combined total: {total_question_marks + total_dash_from_missing_partitions}"
+    ]
 
-    return summary + "\n" + "\n".join(log_entries)
+    if log_entries:
+        return "\n".join(summary_lines + ["", "List of zero-length partitions:"] + log_entries)
+    return "\n".join(summary_lines)
 
 #######################
 # INTEGRATED FUNCTIONS #
@@ -2482,9 +2536,13 @@ def prepDyn(input_file=None,
 
         # 3.7 Partitioning
         partitioning_log_entry = None
+        conservative_blocks = []
 
         if partitioning_method == "conservative" and partitioning_round > 0:
-            classify_and_insert_hashtags(alignment, partitioning_round=partitioning_round)
+            alignment, conservative_blocks = classify_and_insert_hashtags(
+                alignment,
+                partitioning_round=partitioning_round
+            )
 
         elif partitioning_method == "equal":
             if partitioning_round > 0:
@@ -2575,8 +2633,7 @@ def prepDyn(input_file=None,
                     log_file.write(f"{partitioning_log_entry}\n\n")
                 else:
                     # Otherwise, report success as usual.
-                    columns = list(zip(*alignment.values()))
-                    pound_indices = [i for i, col in enumerate(columns) if '#' in col]
+                    pound_indices = get_pound_column_indices_from_output_file(output_path, output_format)
                     if pound_indices:
                         log_file.write(f"Method used: {partitioning_method}")
                         if partitioning_method == "equal" and partitioning_size:
@@ -2586,7 +2643,22 @@ def prepDyn(input_file=None,
                         elif partitioning_method == "max":
                             log_file.write(" (inserted at '?' block boundaries)")
                         log_file.write("\n")
-                        log_file.write(f"Columns with '#' inserted: {pound_indices}\n\n")
+                        if partitioning_method == "conservative" and conservative_blocks:
+                            top_blocks = conservative_blocks[:partitioning_round]
+                            block_sizes = [block['length'] for block in top_blocks]
+                            log_file.write(
+                                f"Size of the {partitioning_round} largest invariant block(s): "
+                                f"{block_sizes}\n"
+                            )
+                        if partitioning_method == "equal" and partitioning_round > 0 and not partitioning_size:
+                            partition_sizes = get_partition_sizes_from_output_file(output_path, output_format)
+                            log_file.write(
+                                f"Size of each equal-length partition: {partition_sizes}\n"
+                            )
+                        log_file.write(
+                            "Position of pound sign columns '#' in final output alignment: "
+                            f"{pound_indices}\n\n"
+                        )
                     elif partitioning_method and partitioning_method != 'none':
                         log_file.write(f"Method used: {partitioning_method}\nNo partitions were inserted based on the criteria.\n\n")
                     else:

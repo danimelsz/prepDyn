@@ -172,7 +172,7 @@ Examples:
 
     # Partitioning
     parser.add_argument("-pm", "--partitioning_method", type=str, default="balanced", choices=["balanced", "conservative", "equal", "max", "None"], help="Method of partitioning. Options: (1) conservative (given blocks of contiguous invariants sorted by length, partition the n-largest block(s); define n using partitioning_round), (2) equal (insert # to divide the alignment into equal-length partitions; define the size of partitions using partitioning_size or the round of partitioning using partitioning_round); (3) max (insert '#' columns around blocks of contiguous missing data i.e. before and after every instance of '?' opening/closure); (4) balanced (insert '#' around the n largest block of missing data; define n using partitioning_round).")
-    parser.add_argument("-pr", "--partitioning_round", type=parse_partitioning_round, help="Round of successive partitioning. Use it if partitioning_method is 'conservative' or 'equal'.", default=0)
+    parser.add_argument("-pr", "--partitioning_round", type=parse_partitioning_round, help="Round of successive partitioning. Use it if partitioning_method is 'balanced', 'conservative' or 'equal'.", default=0)
     parser.add_argument("-ps", "--partitioning_size", type=int, default=None, help="Size of equal-length partitions if partitioning_method = 'equal'.")
 
     # Default
