@@ -72,10 +72,39 @@ The main script is `prepDyn.py`, which comprises four steps:
 
 A summary of parameters available in `prepDyn.py` is [here](tables/parameters.md).
 
+## Citation
+
+If you use **prepDyn** in your research, cite this repository.
+
 ## Tutorial
 
 Check the [**Wiki**](https://github.com/dnakamuraz/prepDyn/wiki/Tutorials) page for a tutorial. If you have questions, send a message using **GitHub issues**. Do not move the scripts from the directory *src*, otherwise the modular structure will break.
 
-## Citation
+## FAQ
 
-If you use **prepDyn** in your research, cite this repository.
+<details>
+<summary><strong>What is prepDyn used for?</strong></summary>
+
+prepDyn is used to preprocess DNA sequences for dynamic homology in POY/PhyG,
+including trimming orphan nucleotides, handling missing data,
+and generating partitions.
+
+</details>
+
+<details>
+<summary><strong>Can prepDyn be used for phylogenetic programs other than POY/PhyG?</strong></summary>
+
+Yes. If partitioning is skipped, prepDyn can still preprocess
+DNA sequences for other phylogenetic programs that treat gaps
+as a fifth character-state (e.g., TNT).
+
+</details>
+
+<details>
+<summary><strong>My sequences are too long and POY/PhyG are unable to start phylogenetic analyses. What should I do?</strong></summary>
+
+Dynamic homology implemented in POY/PhyG is NP-hard. Thus, POY/PhyG is able to find better tree and alignment hypotheses than static homology at the cost of runtime and memory. If sequences are too long, use the parameter `partitioning_max_size`.  
+If specified, sequences are initially split into equal-length
+partitions of size X before applying the partitioning method. 
+
+</details>

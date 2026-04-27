@@ -655,15 +655,16 @@ def calculate_orphan_threshold_from_percentile(alignment, percentile=25, log=Fal
         
     return orphan_threshold
     
-def delete_orphan_nucleotides2(alignment, orphan_threshold, log_changes=False):
+def delete_orphan_nucleotides2(alignment, orphan_threshold, log_changes=False, orphan_action="trim"):
     """
-    Iteratively eliminates orphan nucleotide blocks from the start and end of each sequence.
+    Iteratively eliminates or pushes orphan nucleotide blocks from the start and end of each sequence.
     An orphan block is a short contiguous run of nucleotides near the terminal ends separated by many gaps.
 
     Args:
         alignment (dict): {sequence_id: sequence_string}
         orphan_threshold (int): Max block length and max gap tolerance.
         log_changes (bool): Whether to return a log of changes made.
+        orphan_action (str): Action to perform ('trim' to delete or 'push' to move adjacent to next block).
 
     Returns:
         dict: Cleaned alignment.
@@ -704,13 +705,23 @@ def delete_orphan_nucleotides2(alignment, orphan_threshold, log_changes=False):
                 gap_count = seq_list[first_end:next_start].count('-')
 
                 if (first_end - first_start < orphan_threshold) and (gap_count > orphan_threshold):
-                    deleted = ''.join(seq_list[first_start:first_end])
-                    seq_list[first_start:first_end] = ['-'] * (first_end - first_start)
-                    changed = True
-                    if log_changes:
-                        change_log.append(
-                            f"{seq_id}: Left block {first_start}-{first_end} deleted ('{deleted}')"
-                        )
+                    if orphan_action == "trim":
+                        deleted = ''.join(seq_list[first_start:first_end])
+                        seq_list[first_start:first_end] = ['-'] * (first_end - first_start)
+                        changed = True
+                        if log_changes:
+                            change_log.append(
+                                f"{seq_id}: Left block {first_start}-{first_end} deleted ('{deleted}')"
+                            )
+                    elif orphan_action == "push":
+                        block_str = ''.join(seq_list[first_start:first_end])
+                        block_len = first_end - first_start
+                        seq_list[first_start:next_start] = ['-'] * gap_count + list(block_str)
+                        changed = True
+                        if log_changes:
+                            change_log.append(
+                                f"{seq_id}: Left block {first_start}-{first_end} pushed to {next_start - block_len}-{next_start} ('{block_str}')"
+                            )
                 else:
                     break
 
@@ -724,13 +735,23 @@ def delete_orphan_nucleotides2(alignment, orphan_threshold, log_changes=False):
                 gap_count = seq_list[prev_end:last_start].count('-')
 
                 if (last_end - last_start < orphan_threshold) and (gap_count > orphan_threshold):
-                    deleted = ''.join(seq_list[last_start:last_end])
-                    seq_list[last_start:last_end] = ['-'] * (last_end - last_start)
-                    changed = True
-                    if log_changes:
-                        change_log.append(
-                            f"{seq_id}: Right block {last_start}-{last_end} deleted ('{deleted}')"
-                        )
+                    if orphan_action == "trim":
+                        deleted = ''.join(seq_list[last_start:last_end])
+                        seq_list[last_start:last_end] = ['-'] * (last_end - last_start)
+                        changed = True
+                        if log_changes:
+                            change_log.append(
+                                f"{seq_id}: Right block {last_start}-{last_end} deleted ('{deleted}')"
+                            )
+                    elif orphan_action == "push":
+                        block_str = ''.join(seq_list[last_start:last_end])
+                        block_len = last_end - last_start
+                        seq_list[prev_end:last_end] = list(block_str) + ['-'] * gap_count
+                        changed = True
+                        if log_changes:
+                            change_log.append(
+                                f"{seq_id}: Right block {last_start}-{last_end} pushed to {prev_end}-{prev_end + block_len} ('{block_str}')"
+                            )
                 else:
                     break
 
@@ -2367,6 +2388,7 @@ def prepDyn(input_file=None,
             # Trimming parameters
             orphan_method=None,
             orphan_threshold=10,
+            orphan_action="trim",
             percentile=25,
             del_inv=True,
             # Missing data parameters
@@ -2404,6 +2426,8 @@ def prepDyn(input_file=None,
                             - 'percentile': trim using the 25th percentile;
                             - 'integer': trim with a manual threshold.
         orphan_threshold (int): Threshold used to trim orphan nucleotides if orphan_method = 'integer'.
+        orphan_action (str): Action for orphan nucleotides. 'trim' (default) removes them. 
+                             'push' moves them adjacent to the next block iteratively.
         percentile (float): Used with orphan_method = 'percentile' to define trimming threshold.
         del_inv (bool): Whether to trim invariant terminal columns. Default is True.
         internal_method (str): Defines how to identify internal missing data. Automatic identificaton
@@ -2470,6 +2494,7 @@ def prepDyn(input_file=None,
         "sequence_names": sequence_names,
         "orphan_method": orphan_method,
         "orphan_threshold": orphan_threshold,
+        "orphan_action": orphan_action,
         "percentile": percentile,
         "del_inv": del_inv,
         "internal_method": internal_method,
@@ -2512,6 +2537,7 @@ def prepDyn(input_file=None,
                            _original_cmd_line, # Parameter to pass the original command
                            orphan_method,
                            orphan_threshold,
+                           orphan_action,
                            percentile,
                            del_inv,
                            internal_method,
@@ -2563,7 +2589,7 @@ def prepDyn(input_file=None,
                 _all_sequence_ids.update(alignment_dict.keys())
                 _prepDyn_recursive(input_val=alignment_dict,
                                 GB_input=None, input_format="dict", MSA=MSA,
-                                orphan_method=orphan_method, orphan_threshold=orphan_threshold, percentile=percentile, del_inv=del_inv,
+                                orphan_method=orphan_method, orphan_threshold=orphan_threshold, orphan_action=orphan_action, percentile=percentile, del_inv=del_inv,
                                 internal_method=internal_method, internal_column_ranges=internal_column_ranges, internal_leaves=internal_leaves, internal_threshold=internal_threshold,
                                 n2question=n2question, partitioning_method=partitioning_method, partitioning_round=partitioning_round, partitioning_conservative=partitioning_conservative, partitioning_max_size=partitioning_max_size, partitioning_size=partitioning_size,
                                 output_format=output_format, log=log, sequence_names=False,
@@ -2620,7 +2646,7 @@ def prepDyn(input_file=None,
                         _all_sequence_ids.update(current_file_alignment.keys())
                         _prepDyn_recursive(input_val=current_file_alignment,
                                 GB_input=None, input_format="dict", MSA=False,
-                                orphan_method=orphan_method, orphan_threshold=orphan_threshold, percentile=percentile, del_inv=del_inv,
+                                orphan_method=orphan_method, orphan_threshold=orphan_threshold, orphan_action=orphan_action, percentile=percentile, del_inv=del_inv,
                                 internal_method=internal_method, internal_column_ranges=internal_column_ranges, internal_leaves=internal_leaves, internal_threshold=internal_threshold,
                                 n2question=n2question, partitioning_method=partitioning_method, partitioning_round=partitioning_round, partitioning_conservative=partitioning_conservative, partitioning_max_size=partitioning_max_size, partitioning_size=partitioning_size,
                                 output_format=output_format, log=log, sequence_names=False,
@@ -2691,14 +2717,14 @@ def prepDyn(input_file=None,
         if orphan_method == "percentile":
             orphan_threshold = calculate_orphan_threshold_from_percentile(alignment, percentile, terminal_only=True)
             if log:
-                alignment, orphan_log = delete_orphan_nucleotides2(alignment, orphan_threshold, log_changes=True)
+                alignment, orphan_log = delete_orphan_nucleotides2(alignment, orphan_threshold, log_changes=True, orphan_action=orphan_action)
             else:
-                alignment = delete_orphan_nucleotides2(alignment, orphan_threshold)
+                alignment = delete_orphan_nucleotides2(alignment, orphan_threshold, orphan_action=orphan_action)
         elif orphan_method == "integer":
             if log:
-                alignment, orphan_log = delete_orphan_nucleotides2(alignment, orphan_threshold, log_changes=True)
+                alignment, orphan_log = delete_orphan_nucleotides2(alignment, orphan_threshold, log_changes=True, orphan_action=orphan_action)
             else:
-                alignment = delete_orphan_nucleotides2(alignment, orphan_threshold)
+                alignment = delete_orphan_nucleotides2(alignment, orphan_threshold, orphan_action=orphan_action)
 
 
         # 3.3 Replace terminal gaps with ?
@@ -2957,6 +2983,7 @@ def prepDyn(input_file=None,
                                                    _original_cmd_line=original_cmd_line,
                                                    orphan_method=orphan_method,
                                                    orphan_threshold=orphan_threshold,
+                                                   orphan_action=orphan_action,
                                                    percentile=percentile,
                                                    del_inv=del_inv,
                                                    internal_method=internal_method,
