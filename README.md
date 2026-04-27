@@ -49,7 +49,7 @@ git clone https://github.com/dnakamuraz/PrepDyn.git
 
 ## Usage
 
-<img src="figures/workflow.jpg" align="center" width="1200">
+<img src="figures/fig4_workflow.jpg" align="center" width="1200">
 
 **prepDyn** is organized in four stand-alone Python scripts in the directory src:
 
