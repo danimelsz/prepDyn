@@ -10,7 +10,7 @@ List of parameters in prepDyn. Parameters can be either specified with long or s
 | `output_format` or `of`             | `str`                 | `"fasta"`    | Format for the output alignment.                                                  |
 | `log` or `l`                        | `bool`                | `False`      | Write a detailed log file.                                                        |
 | `sequence_names` or `s`             | `bool`                | `True`       | Write a file with all unique sequence names.                                      |
-| `orphan_method` or `om`             | `str`                 | `None`       | Method to trim orphan nucleotides: `percentile`, `integer`, or `None`.                 |
+| `orphan_method` or `om`             | `str`                 | `None`       | Method to trim orphan nucleotides: `percentile`, `integer`, `adaptive` or `None`.                 |
 | `orphan_action` or `oa`             | `str`                 | `None`       | Action for orphan nucleotides. 'trim' (default) removes them. 'push' moves them adjacent to the next block iteratively.                 |
 | `orphan_threshold` or `ot`          | `int`                 | `10`         | Manual length threshold for `orphan_method integer`.                               |
 | `percentile` or `op`                | `float`               | `25`         | Percentile for `orphan_method percentile`.                                            |

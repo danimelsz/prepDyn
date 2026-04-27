@@ -1,0 +1,107 @@
+--- Command used ---
+prepDyn(input_file='test_data/tutorial/ex7/ex7_16S_aligned_GB2MSA.fasta', input_format='fasta', MSA=False, output_file='test_data/tutorial/ex7/ex7_trimAdapt10', output_format='fasta', log=True, sequence_names=True, orphan_method='adaptive', orphan_threshold=10, orphan_action='trim', percentile=25.0, del_inv=True, internal_column_ranges='all', internal_leaves='all', partitioning_method='conservative', partitioning_round=0, partitioning_conservative='midpoint')
+
+--- Step 1: Summary before preprocessing ---
+No. sequences: 85
+No. columns: 1603
+Total no. nucleotides (A/C/G/T only): 78338 bp
+Total no. gaps (-): 57915
+Total no. IUPAC N: 0
+
+--- Step 2: Trimming (invariant columns) ---
+[0, 1, 1575, 1576, 1577, 1578, 1579, 1580, 1581, 1582, 1583, 1584, 1585, 1586, 1587, 1588, 1589, 1590, 1591, 1592, 1593, 1594, 1595, 1596, 1597, 1598, 1599, 1600, 1601, 1602]
+
+--- Step 2: Trimming (orphan nucleotides) ---
+B_margaritatus_MNRJ73702: Left block 55-56 deleted ('a')
+B_margaritatus_MNRJ76100: Left block 7-8 deleted ('t')
+B_margaritatus_MNRJ76100: Left block 32-34 deleted ('cc')
+B_nanicus_ZUEC25577: Right block 1507-1510 deleted ('tac')
+B_nanicus_ZUEC25578: Right block 1507-1510 deleted ('tac')
+B_nanicus_ZUEC25580: Right block 1507-1510 deleted ('tac')
+B_nanicus_ZUEC25581: Right block 1507-1510 deleted ('tac')
+B_pulex_PU65: Right block 1507-1510 deleted ('cct')
+B_crispus_TC34: Right block 1507-1511 deleted ('ccca')
+B_crispus_TC36: Right block 1507-1511 deleted ('ccca')
+B_ibitinga_CFBH19348: Left block 52-56 deleted ('aaaa')
+B_darkside_PPGT600: Left block 51-56 deleted ('caaaa')
+B_alipioi_AL1: Left block 50-56 deleted ('ctaaaa')
+B_alipioi_CFBH03566: Left block 50-56 deleted ('ctaaaa')
+B_brunneus_CFBH07905: Left block 50-56 deleted ('ccaaaa')
+B_brunneus_CAPR1: Left block 50-56 deleted ('ccaaaa')
+B_crispus_TC34: Left block 50-56 deleted ('ctaaaa')
+B_crispus_TC36: Left block 50-56 deleted ('ctaaaa')
+B_ferruginus_CFBH08025: Left block 50-56 deleted ('ccaaaa')
+B_ferruginus_MBPR1: Left block 50-56 deleted ('ccaaaa')
+B_garbeanus_MNRJ51472: Left block 50-56 deleted ('ccaaaa')
+B_garbeanus_CFBH16800: Left block 50-56 deleted ('ccaaaa')
+B_guarani_PRU1: Left block 50-56 deleted ('ctaaaa')
+B_guarani_PRU3: Left block 50-56 deleted ('ctaaaa')
+B_hermogenesi_TC129: Left block 50-56 deleted ('ctaaaa')
+B_hermogenesi_TC133: Left block 50-56 deleted ('ctaaaa')
+B_izecksohni_CFBH07374: Left block 50-56 deleted ('ccaaaa')
+B_izecksohni_TPPR1: Left block 50-56 deleted ('ccaaaa')
+B_pernix_CFBH02597: Left block 50-56 deleted ('ccaaaa')
+B_pernix_AGPR2: Left block 50-56 deleted ('ccaaaa')
+B_pitanga_CFBH16746: Left block 50-56 deleted ('ctaaaa')
+B_pombali_CFBH08043: Left block 50-56 deleted ('ccaaaa')
+B_pombali_SIPR1: Left block 50-56 deleted ('ccaaaa')
+B_pulex_PU65: Left block 50-56 deleted ('cctaga')
+B_rotenbergae_CFBH16828: Left block 50-56 deleted ('ctaaaa')
+B_toby_TO1: Left block 50-56 deleted ('ctaaaa')
+B_toby: Left block 50-56 deleted ('ctaaaa')
+B_vertebralis_CFBH1388: Left block 50-56 deleted ('ctaaaa')
+B_vertebralis: Left block 50-56 deleted ('ctaaaa')
+B_sp_8: Left block 50-56 deleted ('ctgaag')
+B_alipioi_AL1: Left block 57-64 deleted ('atctagc')
+B_alipioi_CFBH03566: Left block 57-64 deleted ('atctagc')
+B_brunneus_CFBH07905: Left block 57-64 deleted ('atctagc')
+B_brunneus_CAPR1: Left block 57-64 deleted ('atctagc')
+B_crispus_TC34: Left block 57-64 deleted ('atctagc')
+B_crispus_TC36: Left block 57-64 deleted ('atctagc')
+B_darkside_PPGT600: Left block 57-64 deleted ('atctagc')
+B_ferruginus_CFBH08025: Left block 57-64 deleted ('atctagc')
+B_ferruginus_MBPR1: Left block 57-64 deleted ('atctagc')
+B_garbeanus_MNRJ51472: Left block 57-64 deleted ('atctagc')
+B_garbeanus_CFBH16800: Left block 57-64 deleted ('atctagc')
+B_guarani_PRU1: Left block 57-64 deleted ('atctagc')
+B_guarani_PRU3: Left block 57-64 deleted ('atctagc')
+B_hermogenesi_TC129: Left block 57-64 deleted ('atctagc')
+B_hermogenesi_TC133: Left block 57-64 deleted ('atctagc')
+B_ibitinga_CFBH19348: Left block 57-64 deleted ('atctagc')
+B_izecksohni_CFBH07374: Left block 57-64 deleted ('atctagc')
+B_izecksohni_TPPR1: Left block 57-64 deleted ('atctagc')
+B_margaritatus_MNRJ73702: Left block 57-64 deleted ('atctagc')
+B_pernix_CFBH02597: Left block 57-64 deleted ('atctagc')
+B_pernix_AGPR2: Left block 57-64 deleted ('atctagc')
+B_pitanga_CFBH16746: Left block 57-64 deleted ('atctagc')
+B_pombali_CFBH08043: Left block 57-64 deleted ('atctagc')
+B_pombali_SIPR1: Left block 57-64 deleted ('atctagc')
+B_rotenbergae_CFBH16828: Left block 57-64 deleted ('atctagc')
+B_toby_TO1: Left block 57-64 deleted ('atctagc')
+B_toby: Left block 57-64 deleted ('atctagc')
+B_vertebralis_CFBH1388: Left block 57-64 deleted ('atctagc')
+B_vertebralis: Left block 57-64 deleted ('atctagc')
+B_pulex_PU65: Left block 57-65 deleted ('atctagcc')
+B_margaritatus_MNRJ76100: Left block 55-64 deleted ('aaatctagc')
+
+--- Step 3: Missing data identification (gaps replaced with '?') ---
+Total '?' characters: 48395
+Total '-' characters in fully missing partitions: 0
+Combined total: 48395
+
+--- Step 4: Partitioning ---
+Method used: conservative
+No partitions were inserted based on the criteria.
+
+--- Summary after preprocessing ---
+No. sequences: 85
+No. columns: 1573
+No. pound sign columns (#): 0
+Total no. nucleotides (A/C/G/T): 77867 bp
+Total no. gaps (-): 7441
+Total no. IUPAC N: 0
+Total no. missing values (?): 48395
+
+--- Run time ---
+Wall-clock time: 1.77748203 seconds
+CPU time: 1.77317900 seconds

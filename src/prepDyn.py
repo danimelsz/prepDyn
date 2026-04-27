@@ -158,7 +158,7 @@ Examples:
     parser.add_argument("-s", "--sequence_names", default=True, type=str2bool, help="Write sequence names. Useful to manage taxon sampling in POY/PhyG.")
 
     # Trimming
-    parser.add_argument("-om", "--orphan_method", help="Method to trim orphan nucleotides. Options: 'none' (default), 'percentile' (define a threshold using percentile), 'integer' (define a threshold using an integer)", choices=["integer", "percentile"], default=None)
+    parser.add_argument("-om", "--orphan_method", help="Method to trim orphan nucleotides. Options: 'none' (default), 'percentile' (define threshold via percentile), 'integer' (define threshold via integer), 'adaptive' (iteratively automates threshold safely).", choices=["integer", "percentile", "adaptive"], default=None)
     parser.add_argument("-ot", "--orphan_threshold", type=int, help="Threshold integer if orphan_method='integer' (default: 10)", default=10)
     parser.add_argument("-oa", "--orphan_action", type=str, help="Action for orphan nucleotides. 'trim' (default) removes them. 'push' moves them adjacent to the next block iteratively.", choices=["trim", "push"], default="trim")
     parser.add_argument("-op", "--percentile", type=float, help="Percentile of gap lengths to define the orphan threshold if orphan_method='percentile' (default: 25).", default=25.0)

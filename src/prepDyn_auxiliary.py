@@ -654,17 +654,19 @@ def calculate_orphan_threshold_from_percentile(alignment, percentile=25, log=Fal
         print("Orphan threshold:", orphan_threshold)
         
     return orphan_threshold
-    
-def delete_orphan_nucleotides2(alignment, orphan_threshold, log_changes=False, orphan_action="trim"):
+
+def delete_orphan_nucleotides2(alignment, orphan_threshold, log_changes=False, orphan_action="trim", orphan_method="integer"):
     """
     Iteratively eliminates or pushes orphan nucleotide blocks from the start and end of each sequence.
     An orphan block is a short contiguous run of nucleotides near the terminal ends separated by many gaps.
 
     Args:
         alignment (dict): {sequence_id: sequence_string}
-        orphan_threshold (int): Max block length and max gap tolerance.
+        orphan_threshold (int): Max block length and max gap tolerance (for static methods). 
+                                Also acts as the maximum cap limit for the 'adaptive' method.
         log_changes (bool): Whether to return a log of changes made.
         orphan_action (str): Action to perform ('trim' to delete or 'push' to move adjacent to next block).
+        orphan_method (str): "integer", "percentile", or "adaptive".
 
     Returns:
         dict: Cleaned alignment.
@@ -687,77 +689,115 @@ def delete_orphan_nucleotides2(alignment, orphan_threshold, log_changes=False, o
                 i += 1
         return blocks
 
+    # For tracking maximum allowed modifications in 'adaptive'
+    seq_mods = {seq_id: 0 for seq_id in alignment}
+    # 5% limit with a generous baseline of 3 allowed nucleotides to move/trim for short sequences
+    seq_limits = {
+        seq_id: max(3, int(0.05 * len(seq.replace('-', '').replace('?', '').replace('#', '')))) 
+        for seq_id, seq in alignment.items()
+    }
+
+    if orphan_method == "adaptive":
+        current_threshold = 1
+    else:
+        current_threshold = orphan_threshold
+
     alignment_changed = True
-    while alignment_changed:
+    
+    # Adaptive loop stopping condition modified here:
+    while alignment_changed or (orphan_method == "adaptive" and current_threshold <= orphan_threshold):
         alignment_changed = False
 
         for seq_id, sequence in alignment.items():
             seq_list = list(sequence)
-            changed = False
-
-            # Iteratively check from left side
+            changed_this_seq = False
+            
             while True:
                 blocks = find_blocks(seq_list)
                 if len(blocks) < 2:
                     break
+                
+                dynamic_threshold = current_threshold
+
+                # Left side (strictly targets the outermost left block)
                 first_start, first_end = blocks[0]
                 next_start = blocks[1][0]
-                gap_count = seq_list[first_end:next_start].count('-')
+                gap_count_left = seq_list[first_end:next_start].count('-')
+                left_len = first_end - first_start
 
-                if (first_end - first_start < orphan_threshold) and (gap_count > orphan_threshold):
-                    if orphan_action == "trim":
-                        deleted = ''.join(seq_list[first_start:first_end])
-                        seq_list[first_start:first_end] = ['-'] * (first_end - first_start)
-                        changed = True
-                        if log_changes:
-                            change_log.append(
-                                f"{seq_id}: Left block {first_start}-{first_end} deleted ('{deleted}')"
-                            )
-                    elif orphan_action == "push":
-                        block_str = ''.join(seq_list[first_start:first_end])
-                        block_len = first_end - first_start
-                        seq_list[first_start:next_start] = ['-'] * gap_count + list(block_str)
-                        changed = True
-                        if log_changes:
-                            change_log.append(
-                                f"{seq_id}: Left block {first_start}-{first_end} pushed to {next_start - block_len}-{next_start} ('{block_str}')"
-                            )
-                else:
-                    break
-
-            # Iteratively check from right side
-            while True:
-                blocks = find_blocks(seq_list)
-                if len(blocks) < 2:
-                    break
+                # Right side (strictly targets the outermost right block)
                 last_start, last_end = blocks[-1]
                 prev_end = blocks[-2][1]
-                gap_count = seq_list[prev_end:last_start].count('-')
+                gap_count_right = seq_list[prev_end:last_start].count('-')
+                right_len = last_end - last_start
 
-                if (last_end - last_start < orphan_threshold) and (gap_count > orphan_threshold):
+                made_change_left = False
+                made_change_right = False
+
+                # Evaluate Left side condition (Only checking the flanking block)
+                if orphan_method == "adaptive":
+                    cond_left = (left_len <= dynamic_threshold) and (seq_mods[seq_id] + left_len <= seq_limits[seq_id])
+                else:
+                    cond_left = (left_len < dynamic_threshold) and (gap_count_left > dynamic_threshold)
+
+                if cond_left:
+                    if orphan_action == "trim":
+                        deleted = ''.join(seq_list[first_start:first_end])
+                        seq_list[first_start:first_end] = ['-'] * left_len
+                        if log_changes:
+                            change_log.append(f"{seq_id}: Left block {first_start}-{first_end} deleted ('{deleted}')")
+                    elif orphan_action == "push":
+                        block_str = ''.join(seq_list[first_start:first_end])
+                        seq_list[first_start:next_start] = ['-'] * gap_count_left + list(block_str)
+                        if log_changes:
+                            change_log.append(f"{seq_id}: Left block {first_start}-{first_end} pushed to {next_start - left_len}-{next_start} ('{block_str}')")
+                    
+                    seq_mods[seq_id] += left_len
+                    made_change_left = True
+                    changed_this_seq = True
+
+                # If left changed, right block indices might be invalidated. We continue loop to re-find blocks.
+                if made_change_left:
+                    continue
+
+                # Evaluate Right side condition (Only checking the flanking block)
+                if orphan_method == "adaptive":
+                    cond_right = (right_len <= dynamic_threshold) and (seq_mods[seq_id] + right_len <= seq_limits[seq_id])
+                else:
+                    cond_right = (right_len < dynamic_threshold) and (gap_count_right > dynamic_threshold)
+
+                if cond_right:
                     if orphan_action == "trim":
                         deleted = ''.join(seq_list[last_start:last_end])
-                        seq_list[last_start:last_end] = ['-'] * (last_end - last_start)
-                        changed = True
+                        seq_list[last_start:last_end] = ['-'] * right_len
                         if log_changes:
-                            change_log.append(
-                                f"{seq_id}: Right block {last_start}-{last_end} deleted ('{deleted}')"
-                            )
+                            change_log.append(f"{seq_id}: Right block {last_start}-{last_end} deleted ('{deleted}')")
                     elif orphan_action == "push":
                         block_str = ''.join(seq_list[last_start:last_end])
-                        block_len = last_end - last_start
-                        seq_list[prev_end:last_end] = list(block_str) + ['-'] * gap_count
-                        changed = True
+                        seq_list[prev_end:last_end] = list(block_str) + ['-'] * gap_count_right
                         if log_changes:
-                            change_log.append(
-                                f"{seq_id}: Right block {last_start}-{last_end} pushed to {prev_end}-{prev_end + block_len} ('{block_str}')"
-                            )
-                else:
+                            change_log.append(f"{seq_id}: Right block {last_start}-{last_end} pushed to {prev_end}-{prev_end + right_len} ('{block_str}')")
+                    
+                    seq_mods[seq_id] += right_len
+                    made_change_right = True
+                    changed_this_seq = True
+
+                if not made_change_left and not made_change_right:
                     break
 
-            if changed:
+            if changed_this_seq:
                 alignment_changed = True
                 alignment[seq_id] = ''.join(seq_list)
+
+        if orphan_method == "adaptive":
+            if alignment_changed:
+                current_threshold = 1 # reset because merging might have created slightly larger new orphans
+            else:
+                current_threshold += 1
+                if current_threshold <= orphan_threshold:
+                    # check if all sequences hit their max modification limit
+                    if all(seq_mods[sid] >= seq_limits[sid] for sid in alignment):
+                        break
 
     if log_changes:
         return alignment, "\n".join(change_log)
@@ -2425,6 +2465,7 @@ def prepDyn(input_file=None,
                              is not performed. Options:
                             - 'percentile': trim using the 25th percentile;
                             - 'integer': trim with a manual threshold.
+                            - 'adaptive': iteratively automate the threshold with a 5% cap rule.
         orphan_threshold (int): Threshold used to trim orphan nucleotides if orphan_method = 'integer'.
         orphan_action (str): Action for orphan nucleotides. 'trim' (default) removes them. 
                              'push' moves them adjacent to the next block iteratively.
@@ -2715,16 +2756,16 @@ def prepDyn(input_file=None,
         # 3.2 Trim orphan nucleotides
         orphan_log = None
         if orphan_method == "percentile":
-            orphan_threshold = calculate_orphan_threshold_from_percentile(alignment, percentile, terminal_only=True)
+            orphan_threshold_val = calculate_orphan_threshold_from_percentile(alignment, percentile, terminal_only=True)
             if log:
-                alignment, orphan_log = delete_orphan_nucleotides2(alignment, orphan_threshold, log_changes=True, orphan_action=orphan_action)
+                alignment, orphan_log = delete_orphan_nucleotides2(alignment, orphan_threshold_val, log_changes=True, orphan_action=orphan_action, orphan_method="integer")
             else:
-                alignment = delete_orphan_nucleotides2(alignment, orphan_threshold, orphan_action=orphan_action)
-        elif orphan_method == "integer":
+                alignment = delete_orphan_nucleotides2(alignment, orphan_threshold_val, orphan_action=orphan_action, orphan_method="integer")
+        elif orphan_method in ["integer", "adaptive"]:
             if log:
-                alignment, orphan_log = delete_orphan_nucleotides2(alignment, orphan_threshold, log_changes=True, orphan_action=orphan_action)
+                alignment, orphan_log = delete_orphan_nucleotides2(alignment, orphan_threshold, log_changes=True, orphan_action=orphan_action, orphan_method=orphan_method)
             else:
-                alignment = delete_orphan_nucleotides2(alignment, orphan_threshold, orphan_action=orphan_action)
+                alignment = delete_orphan_nucleotides2(alignment, orphan_threshold, orphan_action=orphan_action, orphan_method=orphan_method)
 
 
         # 3.3 Replace terminal gaps with ?

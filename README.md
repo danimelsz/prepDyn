@@ -110,7 +110,7 @@ Yes. If partitioning is skipped, **prepDyn** can still preprocess DNA sequences 
 <details>
 <summary>My sequences are too long and POY/PhyG are unable to start phylogenetic analyses. What should I do?</summary>
 
-Dynamic homology implemented in **POY/PhyG** is NP-hard. Thus, **POY/PhyG** is able to find better tree and alignment hypotheses than static homology at the cost of runtime and memory. If sequences are too long, use the parameter `partitioning_max_size`.   If specified, sequences are initially split into equal-length partitions of size X before applying the partitioning method. 
+Dynamic homology implemented in **POY/PhyG** is NP-hard. If sequences are too long, use the parameter `partitioning_max_size`, so that sequences are initially split into equal-length partitions of size X before applying the partitioning methods (balanced, conservative, equal, maximum) in each resulting chunk.
 
 </details>
 
@@ -124,10 +124,25 @@ The best partitioning strategy is dataset-dependent and the user must test it em
 <details>
 <summary>What are orphan nucleotides and which strategy is better to handle them?</summary>
 
-Low-quality regions, such as sequencing errors that accumulate near sequence termini, often lead to alignment artifacts. One common artifact is orphan nucleotides, defined as short stretches of nucleotides that appear separated from the main sequence block by long runs of gaps. We recommend removing these regions during preprocessing. 
+Orphan nucleotides, defined as short stretches of nucleotides that appear separated from the main sequence block by long runs of gaps. These nucleotides can be artifacts from sequencing errors or alignment errors. As such ,orphan nucleotides should be either trimmed (`orphan_action trim`) or realigned (`orphan_action push`). 
 
-Operationally, orphan nucleotides can be identified as contiguous nucleotide segments shorter than a user-defined threshold x, located at the flanks of a sequence and separated from the nearest substantial nucleotide block by gap regions longer than x. Because the optimal value of x depends on the characteristics of the dataset, it should be specified by the user (orphan_threshold) via visual inspection of alignment. Based on our experience, values between 25 and 45 generally perform well across many datasets. When a single orphan threshold is not feasible, other methods can be used (e.g. adaptive orphan threshold and unsupervised machine learning to classify orphan and non-orphan blocks). 
+Operationally, orphan nucleotides can be identified as contiguous nucleotide segments shorter than a user-defined threshold x, located at the flanks of a sequence and separated from the nearest substantial nucleotide block by gap regions longer than x. Because the optimal value of x depends on the characteristics of the dataset, it should be specified by the user (orphan_threshold) via visual inspection of alignment. Based on our experience, values between 10 and 30 generally perform well across many datasets. See also automatic methods available in `orphan_method`.
 
-In cases where orphan nucleotides are interpreted as artifacts of static homology rather than sequencing error, an alternative to removal is to iteratively realign these short segments adjacent to the nearest nucleotide block (`orphan_action push`), instead of discarding them (`orphan_action trim`).
+</details>
+
+<details>
+<summary>Which methods are available to handle orphan nucleotides automatically?</summary>
+
+When a single orphan threshold is not feasible or visual inspection is too laborious in large datasets, adaptive orphan threshold can be specified with `orphan_method adaptive`.
+  
+a. Budgeting: Before doing anything, it counts the total sequence length. Then, it calculates 5% of this length (budget). 
+b. Iterative Growth: It sets a current_threshold starting at 1.
+c. Execution: It looks at the sequence. Are there any orphan blocks of length 1?
+     If yes: It pushes/trims them, deducts 1 from the budget, resets the threshold back to 1, and restarts the loop (because pushing a block of 1 might combine it with another block of 1, creating a block of 2).
+     If no: It increases the current_threshold to 2 and looks again.
+d. Stopping conditions: It stops iterating if:
+     The threshold reaches a maximum value specified by `orphan_threshold` (a hard safety limit so it doesn't accidentally eat half a sequence).
+     A sequence runs out of its 5% modification budget.
+
 
 </details>
