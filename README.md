@@ -85,7 +85,7 @@ Check the [**Wiki**](https://github.com/dnakamuraz/prepDyn/wiki/Tutorials) page 
 <details>
 <summary>What is prepDyn used for?</summary>
 
-prepDyn is used to preprocess DNA sequences for dynamic homology in POY/PhyG,
+**prepDyn** is used to preprocess DNA sequences for dynamic homology in **POY/PhyG**,
 including trimming orphan nucleotides, handling missing data,
 and generating partitions.
 
@@ -94,7 +94,7 @@ and generating partitions.
 <details>
 <summary>Can prepDyn be used for phylogenetic programs other than POY/PhyG?</summary>
 
-Yes. If partitioning is skipped, prepDyn can still preprocess
+Yes. If partitioning is skipped, **prepDyn** can still preprocess
 DNA sequences for other phylogenetic programs. The Step 3 is particularly useful to identify missing data and avoid downstream problems in software that treat gaps as a fifth character-state (e.g., TNT).
 
 </details>
@@ -102,8 +102,7 @@ DNA sequences for other phylogenetic programs. The Step 3 is particularly useful
 <details>
 <summary>My sequences are too long and POY/PhyG are unable to start phylogenetic analyses. What should I do?</summary>
 
-Dynamic homology implemented in POY/PhyG is NP-hard. Thus, POY/PhyG is able to find better tree and alignment hypotheses than static homology at the cost of runtime and memory. If sequences are too long, use the parameter `partitioning_max_size`.   If specified, sequences are initially split into equal-length
-partitions of size X before applying the partitioning method. 
+Dynamic homology implemented in **POY/PhyG** is NP-hard. Thus, ****POY/PhyG** is able to find better tree and alignment hypotheses than static homology at the cost of runtime and memory. If sequences are too long, use the parameter `partitioning_max_size`.   If specified, sequences are initially split into equal-length partitions of size X before applying the partitioning method. 
 
 </details>
 
@@ -121,6 +120,6 @@ Low-quality regions, such as sequencing errors that accumulate near sequence ter
 
 Operationally, orphan nucleotides can be identified as contiguous nucleotide segments shorter than a user-defined threshold x, located at the flanks of a sequence and separated from the nearest substantial nucleotide block by gap regions longer than x. Because the optimal value of x depends on the characteristics of the dataset, it should be specified by the user (orphan_threshold) via visual inspection of alignment. Based on our experience, values between 25 and 45 generally perform well across many datasets. When a single orphan threshold is not feasible, other methods can be used (e.g. adaptive orphan threshold and unsupervised machine learning to classify orphan and non-orphan blocks). 
 
-In cases where orphan nucleotides are interpreted as artifacts of static homology rather than sequencing error, an alternative to removal is to iteratively reposition these short segments so that they abut the nearest nucleotide block (orphan_action = "push"), instead of discarding them (orphan_action = "trim").
+In cases where orphan nucleotides are interpreted as artifacts of static homology rather than sequencing error, an alternative to removal is to iteratively realign these short segments adjacent to the nearest nucleotide block (`orphan_action push`), instead of discarding them (`orphan_action trim`).
 
 </details>
