@@ -139,7 +139,7 @@ Examples:
   python prepDyn.py -gb accessions.csv -o output
 
   # Given a FASTA alignment, identify terminal missing data and delete orphan nucleotides of length < 10.
-  python prepDyn.py -i aln.fasta -o output -om integer -ot 10
+  python prepDyn.py -i aln.fasta -o output -om integer -ot 10 -oa trim
 
   # Given a FASTA alignment with hDNA sequences in sp1 and sp4, replace IUPAC N with ?
   python prepDyn.py -i aln.fasta -o output -n2q sp1,sp4
@@ -160,6 +160,7 @@ Examples:
     # Trimming
     parser.add_argument("-om", "--orphan_method", help="Method to trim orphan nucleotides. Options: 'none' (default), 'percentile' (define a threshold using percentile), 'integer' (define a threshold using an integer)", choices=["integer", "percentile"], default=None)
     parser.add_argument("-ot", "--orphan_threshold", type=int, help="Threshold integer if orphan_method='integer' (default: 10)", default=10)
+    parser.add_argument("-oa", "--orphan_action", type=str, help="Action for orphan nucleotides. 'trim' (default) removes them. 'push' moves them adjacent to the next block iteratively.", choices=["trim", "push"], default="trim")
     parser.add_argument("-op", "--percentile", type=float, help="Percentile of gap lengths to define the orphan threshold if orphan_method='percentile' (default: 25).", default=25.0)
     parser.add_argument("-di", "--del_inv", default=True, type=str2bool, help="Trim invariant terminal columns (default: True)")
 
@@ -200,6 +201,7 @@ Examples:
             # Trimming parameters
             orphan_method=args.orphan_method,
             orphan_threshold=args.orphan_threshold,
+            orphan_action=args.orphan_action,
             percentile=args.percentile,
             del_inv=args.del_inv,
             # Missing data parameters

@@ -1,0 +1,8 @@
+--- Overall prepDyn Execution Summary ---
+Command used:
+prepDyn(GB_input='test_data/tutorial/ex7/prepdyn_filtered_16S.csv', input_format='fasta', MSA=False, output_file='test_data/tutorial/ex7/ex7', output_format='fasta', log=True, sequence_names=True, orphan_threshold=10, orphan_action='trim', percentile=25.0, del_inv=True, internal_column_ranges='all', internal_leaves='all', partitioning_method='None', partitioning_round=0, partitioning_conservative='midpoint')
+
+Total Wall-clock time: 151.45554996 seconds
+Total CPU time: 2.30201600 seconds
+
+Note: Individual gene/alignment logs provide detailed information.
