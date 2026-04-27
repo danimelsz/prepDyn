@@ -92,17 +92,23 @@ and generating partitions.
 </details>
 
 <details>
+<summary>What is dynamic homology?</summary>
+
+Two main strategies are used to align DNA sequences and determine homology. In static homology, sequences are first aligned using a similarity-based (= phenetic) multiple sequence alignment, and that fixed alignment is then evaluated across trees to find the lowest-cost tree. In dynamic homology, unaligned sequences are optimized directly on each tree during the search, and homologous nucleotides are inferred afterward from the best tree via implied alignments. Finding the lowest-cost tree from unaligned sequences under this framework is NP-hard, so practical analyses rely on heuristic methods (e.g. direct optimization and iterative-pass). Dynamic homology frequently finds more optimal hypotheses than static homology at the cost of computational resources (runtime and memory).
+
+</details>
+
+<details>
 <summary>Can prepDyn be used for phylogenetic programs other than POY/PhyG?</summary>
 
-Yes. If partitioning is skipped, **prepDyn** can still preprocess
-DNA sequences for other phylogenetic programs. The Step 3 is particularly useful to identify missing data and avoid downstream problems in software that treat gaps as a fifth character-state (e.g., TNT).
+Yes. If partitioning is skipped, **prepDyn** can still preprocess DNA sequences for other phylogenetic programs. The Step 3 is particularly useful to identify missing data and avoid downstream problems in software that treat gaps as a fifth character-state (e.g., TNT).
 
 </details>
 
 <details>
 <summary>My sequences are too long and POY/PhyG are unable to start phylogenetic analyses. What should I do?</summary>
 
-Dynamic homology implemented in **POY/PhyG** is NP-hard. Thus, ****POY/PhyG** is able to find better tree and alignment hypotheses than static homology at the cost of runtime and memory. If sequences are too long, use the parameter `partitioning_max_size`.   If specified, sequences are initially split into equal-length partitions of size X before applying the partitioning method. 
+Dynamic homology implemented in **POY/PhyG** is NP-hard. Thus, **POY/PhyG** is able to find better tree and alignment hypotheses than static homology at the cost of runtime and memory. If sequences are too long, use the parameter `partitioning_max_size`.   If specified, sequences are initially split into equal-length partitions of size X before applying the partitioning method. 
 
 </details>
 
