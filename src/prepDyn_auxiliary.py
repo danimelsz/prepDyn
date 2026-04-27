@@ -1216,6 +1216,34 @@ def remove_adjacent_pound_columns(alignment):
 
     return cleaned_alignment
 
+def normalize_pound_columns(alignment):
+    """
+    Ensure that any alignment column containing at least one '#' becomes a full
+    pound-sign column across all sequences.
+
+    Args:
+        alignment (dict): DNA alignment {sequence_id: sequence_string}
+
+    Returns:
+        dict: Alignment with normalized '#' columns.
+    """
+    if not alignment:
+        return alignment
+
+    seq_ids = list(alignment.keys())
+    matrix = [list(alignment[seq_id]) for seq_id in seq_ids]
+    num_cols = len(matrix[0])
+
+    if any(len(row) != num_cols for row in matrix):
+        raise ValueError("All sequences must have the same length.")
+
+    for col_idx in range(num_cols):
+        if any(row[col_idx] == '#' for row in matrix):
+            for row in matrix:
+                row[col_idx] = '#'
+
+    return {seq_ids[i]: ''.join(matrix[i]) for i in range(len(seq_ids))}
+
 def get_pound_column_indices(alignment):
     """
     Return the indices of true partition columns, defined as columns made only of '#'.
@@ -1322,6 +1350,128 @@ def equal_length_partitioning(alignment, partitioning_size=None, partitioning_ro
 
     return updated_alignment
 
+def split_alignment_into_equal_chunks(alignment, chunk_size):
+    """
+    Split an alignment dictionary into consecutive equal-length chunks.
+
+    Args:
+        alignment (dict): Dictionary of sequences {seq_id: sequence_str}
+        chunk_size (int): Maximum size of each chunk
+
+    Returns:
+        list[dict]: List of alignment chunks
+    """
+    if not alignment:
+        return []
+    if chunk_size is None or chunk_size <= 0:
+        raise ValueError("chunk_size must be a positive integer.")
+
+    aln_length = len(next(iter(alignment.values())))
+    return [
+        {seq_id: seq[start:start + chunk_size] for seq_id, seq in alignment.items()}
+        for start in range(0, aln_length, chunk_size)
+    ]
+
+def join_alignment_chunks_with_pounds(chunks, return_metadata=False):
+    """
+    Join alignment chunks, separating them with full '#' columns.
+
+    Args:
+        chunks (list[dict]): List of alignment chunks
+        return_metadata (bool): If True, also return the origin of inserted '#'
+                                columns in final one-based coordinates.
+
+    Returns:
+        dict or tuple: Joined alignment, optionally with metadata
+    """
+    if not chunks:
+        return ({}, {"max_size_positions": [], "method_positions": []}) if return_metadata else {}
+
+    seq_ids = list(chunks[0].keys())
+    joined = {seq_id: "" for seq_id in seq_ids}
+    max_size_positions = []
+    method_positions = []
+    offset = 0
+
+    for chunk_idx, chunk in enumerate(chunks):
+        method_positions.extend([offset + idx + 1 for idx in get_pound_column_indices(chunk)])
+        for seq_id in seq_ids:
+            joined[seq_id] += chunk[seq_id]
+
+        chunk_length = len(next(iter(chunk.values()))) if chunk else 0
+        if chunk_idx < len(chunks) - 1:
+            max_size_positions.append(offset + chunk_length + 1)
+            for seq_id in seq_ids:
+                joined[seq_id] += "#"
+            offset += chunk_length + 1
+        else:
+            offset += chunk_length
+
+    metadata = {
+        "max_size_positions": max_size_positions,
+        "method_positions": method_positions,
+    }
+    return (joined, metadata) if return_metadata else joined
+
+def apply_partitioning_strategy(alignment,
+                                partitioning_method,
+                                partitioning_round=0,
+                                partitioning_conservative="midpoint",
+                                partitioning_size=None):
+    """
+    Apply a single partitioning strategy to one alignment dictionary.
+
+    Returns:
+        tuple: (updated_alignment, conservative_blocks, partitioning_log_entry, balanced_metadata)
+    """
+    partitioning_log_entry = None
+    conservative_blocks = []
+    balanced_metadata = None
+
+    if partitioning_method == "conservative" and partitioning_round > 0:
+        alignment, conservative_blocks = classify_and_insert_hashtags(
+            alignment,
+            partitioning_round=partitioning_round,
+            partitioning_conservative=partitioning_conservative
+        )
+
+    elif partitioning_method == "equal":
+        if partitioning_round > 0:
+            alignment = equal_length_partitioning(
+                alignment=alignment,
+                partitioning_round=partitioning_round,
+                partitioning_size=None,
+                log=False
+            )
+        elif partitioning_size:
+            alignment = equal_length_partitioning(
+                alignment=alignment,
+                partitioning_round=None,
+                partitioning_size=partitioning_size,
+                log=False
+            )
+
+    elif partitioning_method == "max":
+        alignment = insert_pound_around_questions(alignment)
+
+    elif partitioning_method == "balanced":
+        if partitioning_round > 0:
+            try:
+                alignment, balanced_metadata = balanced_partitioning(
+                    alignment,
+                    log=False,
+                    partitioning_round=partitioning_round,
+                    return_metadata=True
+                )
+            except (IndexError, ValueError):
+                partitioning_log_entry = (
+                    f"WARNING: 'balanced' partitioning with partitioning_round={partitioning_round} was skipped for this alignment. "
+                    "This typically happens when the alignment has fewer blocks of missing data ('?') than required. "
+                    "The process will continue without partitioning this file."
+                )
+
+    return alignment, conservative_blocks, partitioning_log_entry, balanced_metadata
+
 def insert_pound_around_questions(alignment):
     """
     Insert '#' columns around the opening and closure of '?' blocks.
@@ -1387,7 +1537,7 @@ def insert_pound_around_questions(alignment):
     # Return as dict
     return {names[i]: ''.join(row) for i, row in enumerate(matrix)}
 
-def balanced_partitioning(alignment, log=False, partitioning_round=1):
+def balanced_partitioning(alignment, log=False, partitioning_round=1, return_metadata=False):
     """
     Partition alignment by merging blocks flanked by '#' based on a length threshold.
 
@@ -1404,7 +1554,8 @@ def balanced_partitioning(alignment, log=False, partitioning_round=1):
         partitioning_round (int): Use the N-th longest block as the threshold.
 
     Returns:
-        dict: Updated alignment with balanced '#' partitioning.
+        dict or tuple: Updated alignment with balanced '#' partitioning, optionally
+                       with metadata about the reference missing-data block.
     """
     from copy import deepcopy
 
@@ -1428,6 +1579,13 @@ def balanced_partitioning(alignment, log=False, partitioning_round=1):
     block_idx, N, start_col, end_col = sorted_blocks[partitioning_round - 1]
 
     merged_log = []
+    balanced_metadata = {
+        "reference_block_rank": partitioning_round,
+        "reference_block_size": N,
+        "reference_block_start": start_col,
+        "reference_block_end": end_col,
+    }
+
     if log:
         suffix = {1: "st", 2: "nd", 3: "rd"}.get(partitioning_round, "th")
         merged_log.append(
@@ -1474,7 +1632,10 @@ def balanced_partitioning(alignment, log=False, partitioning_round=1):
     if log:
         print("\n".join(merged_log))
 
-    return {names[i]: ''.join(row) for i, row in enumerate(matrix)}
+    result_alignment = {names[i]: ''.join(row) for i, row in enumerate(matrix)}
+    if return_metadata:
+        return result_alignment, balanced_metadata
+    return result_alignment
 
 ##############################
 # AUXILIARY FUNCTIONS TO LOG #
@@ -1826,7 +1987,14 @@ def addSeq(
 
     # Log the function call and parameters for reproducibility
     if log:
-        cmd_used = f"addSeq(alignment=..., new_seqs=..., output='{output}', write_names={write_names}, orphan_threshold={orphan_threshold}, log={log}, n2question={n2question}, gaps2question={gaps2question})"
+        alignment_repr = alignment if isinstance(alignment, str) else "<dict>"
+        new_seqs_repr = new_seqs if isinstance(new_seqs, str) else "<dict>"
+        cmd_used = (
+            f"addSeq(alignment={alignment_repr}, new_seqs={new_seqs_repr}, "
+            f"output='{output}', write_names={write_names}, "
+            f"orphan_threshold={orphan_threshold}, log={log}, "
+            f"n2question={n2question}, gaps2question={gaps2question})"
+        )
         log_lines.append(f"Command used: {cmd_used}")
         log_lines.append("")
 
@@ -2124,6 +2292,10 @@ def addSeq(
         for rec in final_records
     ]
 
+    output_dir = os.path.dirname(output)
+    if output_dir:
+        os.makedirs(output_dir, exist_ok=True)
+
     # --- New function to find contiguous '?' blocks ---
     def find_question_blocks(seq):
         blocks = []
@@ -2207,6 +2379,7 @@ def prepDyn(input_file=None,
             partitioning_round=0,
             partitioning_method="conservative",
             partitioning_conservative="midpoint",
+            partitioning_max_size=None,
             partitioning_size=None
             ):
     """
@@ -2261,6 +2434,9 @@ def prepDyn(input_file=None,
                                          (default) to insert one '#' in the middle of each selected
                                          invariant block, or 'flank' to insert '#' columns on both sides
                                          of each selected invariant block.
+        partitioning_max_size (int): Initial maximum partition size. If specified, the alignment is first
+                                     split into equal-length partitions of this size, and the selected
+                                     partitioning method is then applied independently within each partition.
         partitioning_round (int): Number of partitioning round. Invariant regions are sorted by length
                                   in descendant order and the n-largest block(s) partitioned using '#'.
                                   If "max" is specified, pound signs are inserted arund all blocks of
@@ -2304,6 +2480,7 @@ def prepDyn(input_file=None,
         "partitioning_method": partitioning_method,
         "partitioning_round": partitioning_round,
         "partitioning_conservative": partitioning_conservative,
+        "partitioning_max_size": partitioning_max_size,
         "partitioning_size": partitioning_size,
     }
 
@@ -2345,6 +2522,7 @@ def prepDyn(input_file=None,
                            partitioning_round,
                            partitioning_method,
                            partitioning_conservative,
+                           partitioning_max_size,
                            partitioning_size
                            ):
 
@@ -2387,7 +2565,7 @@ def prepDyn(input_file=None,
                                 GB_input=None, input_format="dict", MSA=MSA,
                                 orphan_method=orphan_method, orphan_threshold=orphan_threshold, percentile=percentile, del_inv=del_inv,
                                 internal_method=internal_method, internal_column_ranges=internal_column_ranges, internal_leaves=internal_leaves, internal_threshold=internal_threshold,
-                                n2question=n2question, partitioning_method=partitioning_method, partitioning_round=partitioning_round, partitioning_conservative=partitioning_conservative, partitioning_size=partitioning_size,
+                                n2question=n2question, partitioning_method=partitioning_method, partitioning_round=partitioning_round, partitioning_conservative=partitioning_conservative, partitioning_max_size=partitioning_max_size, partitioning_size=partitioning_size,
                                 output_format=output_format, log=log, sequence_names=False,
                                 _all_sequence_ids=_all_sequence_ids, _is_top_level_call=False, _original_cmd_line=_original_cmd_line,
                                 output_file=specific_output_prefix_for_recursion)
@@ -2444,7 +2622,7 @@ def prepDyn(input_file=None,
                                 GB_input=None, input_format="dict", MSA=False,
                                 orphan_method=orphan_method, orphan_threshold=orphan_threshold, percentile=percentile, del_inv=del_inv,
                                 internal_method=internal_method, internal_column_ranges=internal_column_ranges, internal_leaves=internal_leaves, internal_threshold=internal_threshold,
-                                n2question=n2question, partitioning_method=partitioning_method, partitioning_round=partitioning_round, partitioning_conservative=partitioning_conservative, partitioning_size=partitioning_size,
+                                n2question=n2question, partitioning_method=partitioning_method, partitioning_round=partitioning_round, partitioning_conservative=partitioning_conservative, partitioning_max_size=partitioning_max_size, partitioning_size=partitioning_size,
                                 output_format=output_format, log=log, sequence_names=False,
                                 _all_sequence_ids=_all_sequence_ids, _is_top_level_call=False, _original_cmd_line=_original_cmd_line,
                                 output_file=specific_output_prefix)
@@ -2487,6 +2665,8 @@ def prepDyn(input_file=None,
                     f"(current working directory: {os.getcwd()})"
                 )
             raise ValueError(f"Invalid input_val type: {type(input_val).__name__}.")
+
+        alignment = normalize_pound_columns(alignment)
 
 
         ### FIX: PART 1 - Capture "before" statistics right after loading ###
@@ -2552,44 +2732,54 @@ def prepDyn(input_file=None,
         # 3.7 Partitioning
         partitioning_log_entry = None
         conservative_blocks = []
+        conservative_blocks_by_chunk = []
+        balanced_metadata = None
+        balanced_metadata_by_chunk = []
+        partitioning_max_size_positions = []
+        partitioning_method_positions = []
 
-        if partitioning_method == "conservative" and partitioning_round > 0:
-            alignment, conservative_blocks = classify_and_insert_hashtags(
-                alignment,
-                partitioning_round=partitioning_round,
-                partitioning_conservative=partitioning_conservative
+        if partitioning_max_size:
+            chunked_alignments = split_alignment_into_equal_chunks(alignment, partitioning_max_size)
+            processed_chunks = []
+            chunk_warnings = []
+
+            for chunk_alignment in chunked_alignments:
+                processed_chunk, chunk_conservative_blocks, chunk_log_entry, chunk_balanced_metadata = apply_partitioning_strategy(
+                    chunk_alignment,
+                    partitioning_method=partitioning_method,
+                    partitioning_round=partitioning_round,
+                    partitioning_conservative=partitioning_conservative,
+                    partitioning_size=partitioning_size
+                )
+                processed_chunks.append(processed_chunk)
+                conservative_blocks_by_chunk.append(chunk_conservative_blocks)
+                balanced_metadata_by_chunk.append(chunk_balanced_metadata)
+                if chunk_log_entry:
+                    chunk_warnings.append(chunk_log_entry)
+
+            alignment, partitioning_chunk_metadata = join_alignment_chunks_with_pounds(
+                processed_chunks,
+                return_metadata=True
             )
-
-        elif partitioning_method == "equal":
-            if partitioning_round > 0:
-                alignment = equal_length_partitioning(alignment=alignment, partitioning_round=partitioning_round, partitioning_size=None, log=False)
-            elif partitioning_size:
-                alignment = equal_length_partitioning(alignment=alignment, partitioning_round=None, partitioning_size=partitioning_size, log=False)
-
-        elif partitioning_method == "max":
-            alignment = insert_pound_around_questions(alignment)
-        
-        elif partitioning_method == "balanced":
-            try:
-                # Attempt to run the balanced partitioning. This may fail if there are not enough '?' blocks.
-                processed_alignment = balanced_partitioning(
-                    alignment,
-                    log=False,
-                    partitioning_round=partitioning_round
-                )
-                alignment = processed_alignment
-            except (IndexError, ValueError) as e:
-                # If it fails, catch the error, prepare a log message, and continue.
-                warning_message = (
-                    f"WARNING: 'balanced' partitioning with partitioning_round={partitioning_round} was skipped for this alignment. "
-                    "This typically happens when the alignment has fewer blocks of missing data ('?') than required. "
-                    "The process will continue without partitioning this file."
-                )
-                print(f"\n{warning_message}\n") # Print to console for immediate user feedback.
-                partitioning_log_entry = warning_message # Save the message for the log file.
+            partitioning_max_size_positions = partitioning_chunk_metadata["max_size_positions"]
+            partitioning_method_positions = partitioning_chunk_metadata["method_positions"]
+            if chunk_warnings:
+                partitioning_log_entry = "\n".join(chunk_warnings)
+                print(f"\n{partitioning_log_entry}\n")
+        else:
+            alignment, conservative_blocks, partitioning_log_entry, balanced_metadata = apply_partitioning_strategy(
+                alignment,
+                partitioning_method=partitioning_method,
+                partitioning_round=partitioning_round,
+                partitioning_conservative=partitioning_conservative,
+                partitioning_size=partitioning_size
+            )
+            if partitioning_log_entry:
+                print(f"\n{partitioning_log_entry}\n")
 
         refinement_question2hyphen(alignment)
         alignment = remove_columns_with_W(alignment)
+        alignment = normalize_pound_columns(alignment)
         alignment = remove_adjacent_pound_columns(alignment)
 
 
@@ -2651,23 +2841,78 @@ def prepDyn(input_file=None,
                     # Otherwise, report success as usual.
                     pound_indices = get_pound_column_indices_from_output_file(output_path, output_format)
                     if pound_indices:
-                        log_file.write(f"Method used: {partitioning_method}")
-                        if partitioning_method == "equal" and partitioning_size:
-                            log_file.write(f" (partitioning_size={partitioning_size})")
-                        elif partitioning_method in ["conservative", "balanced"]:
-                            log_file.write(f" (partitioning_round={partitioning_round})")
-                            if partitioning_method == "conservative":
-                                log_file.write(f" (partitioning_conservative={partitioning_conservative})")
-                        elif partitioning_method == "max":
-                            log_file.write(" (inserted at '?' block boundaries)")
-                        log_file.write("\n")
-                        if partitioning_method == "conservative" and conservative_blocks:
-                            top_blocks = conservative_blocks[:partitioning_round]
-                            block_sizes = [block['length'] for block in top_blocks]
-                            log_file.write(
-                                f"Size of the {partitioning_round} largest invariant block(s): "
-                                f"{block_sizes}\n"
+                        if partitioning_max_size:
+                            log_file.write(f"Method used: initial partitioning (partitioning_max_size={partitioning_max_size})")
+                            secondary_applied = (
+                                partitioning_method == "max" or
+                                (partitioning_method in ["conservative", "balanced"] and partitioning_round > 0) or
+                                (partitioning_method == "equal" and (partitioning_round > 0 or partitioning_size))
                             )
+                            if secondary_applied:
+                                log_file.write(f" + {partitioning_method}")
+                                if partitioning_method == "equal" and partitioning_size:
+                                    log_file.write(f" (partitioning_size={partitioning_size})")
+                                elif partitioning_method in ["conservative", "balanced"]:
+                                    log_file.write(f" (partitioning_round={partitioning_round})")
+                                    if partitioning_method == "conservative":
+                                        log_file.write(f" (partitioning_conservative={partitioning_conservative})")
+                                elif partitioning_method == "max":
+                                    log_file.write(" (inserted at '?' block boundaries)")
+                        else:
+                            log_file.write(f"Method used: {partitioning_method}")
+                            if partitioning_method == "equal" and partitioning_size:
+                                log_file.write(f" (partitioning_size={partitioning_size})")
+                            elif partitioning_method in ["conservative", "balanced"]:
+                                log_file.write(f" (partitioning_round={partitioning_round})")
+                                if partitioning_method == "conservative":
+                                    log_file.write(f" (partitioning_conservative={partitioning_conservative})")
+                            elif partitioning_method == "max":
+                                log_file.write(" (inserted at '?' block boundaries)")
+                        log_file.write("\n")
+                        if partitioning_max_size:
+                            log_file.write(
+                                "Position of pound sign columns '#' from initial partitioning "
+                                f"(partitioning_max_size): {partitioning_max_size_positions}\n"
+                            )
+                            if partitioning_method_positions:
+                                log_file.write(
+                                    "Position of pound sign columns '#' from subsequent "
+                                    f"partitioning_method='{partitioning_method}': {partitioning_method_positions}\n"
+                                )
+                            else:
+                                log_file.write(
+                                    "Position of pound sign columns '#' from subsequent "
+                                    f"partitioning_method='{partitioning_method}': []\n"
+                                )
+                        if partitioning_method == "conservative":
+                            if partitioning_max_size and conservative_blocks_by_chunk:
+                                for chunk_idx, chunk_blocks in enumerate(conservative_blocks_by_chunk, start=1):
+                                    top_blocks = chunk_blocks[:partitioning_round]
+                                    block_sizes = [block['length'] for block in top_blocks]
+                                    log_file.write(
+                                        f"Size of the {partitioning_round} largest invariant block(s) "
+                                        f"in partition {chunk_idx}: {block_sizes}\n"
+                                    )
+                            elif conservative_blocks:
+                                top_blocks = conservative_blocks[:partitioning_round]
+                                block_sizes = [block['length'] for block in top_blocks]
+                                log_file.write(
+                                    f"Size of the {partitioning_round} largest invariant block(s): "
+                                    f"{block_sizes}\n"
+                                )
+                        if partitioning_method == "balanced":
+                            if partitioning_max_size and balanced_metadata_by_chunk:
+                                for chunk_idx, chunk_metadata in enumerate(balanced_metadata_by_chunk, start=1):
+                                    if chunk_metadata is not None:
+                                        log_file.write(
+                                            f"Size of the {chunk_metadata['reference_block_rank']} largest block of missing data "
+                                            f"used as reference in partition {chunk_idx}: {chunk_metadata['reference_block_size']}\n"
+                                        )
+                            elif balanced_metadata is not None:
+                                log_file.write(
+                                    f"Size of the {balanced_metadata['reference_block_rank']} largest block of missing data "
+                                    f"used as reference: {balanced_metadata['reference_block_size']}\n"
+                                )
                         if partitioning_method == "equal" and partitioning_round > 0 and not partitioning_size:
                             partition_sizes = get_partition_sizes_from_output_file(output_path, output_format)
                             log_file.write(
@@ -2722,6 +2967,7 @@ def prepDyn(input_file=None,
                                                    partitioning_round=partitioning_round,
                                                    partitioning_method=partitioning_method,
                                                    partitioning_conservative=partitioning_conservative,
+                                                   partitioning_max_size=partitioning_max_size,
                                                    partitioning_size=partitioning_size)
 
     # --- Final sequence_names.txt and overall log writing (Unchanged) ---

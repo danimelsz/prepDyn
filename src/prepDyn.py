@@ -171,9 +171,10 @@ Examples:
     parser.add_argument("-n2q", "--n2question", type=parse_n2question_leaves, default=None, help="Replace IUPAC N with ?. Options: 'none' (default), 'all' (apply to all leaves), single leaf name, or list of leaf names ['sp1', 'sp2'].")
 
     # Partitioning
-    parser.add_argument("-pm", "--partitioning_method", type=str, default="balanced", choices=["balanced", "conservative", "equal", "max", "None"], help="Method of partitioning. Options: (1) conservative (given blocks of contiguous invariants sorted by length, partition the n-largest block(s); define n using partitioning_round), (2) equal (insert # to divide the alignment into equal-length partitions; define the size of partitions using partitioning_size or the round of partitioning using partitioning_round); (3) max (insert '#' columns around blocks of contiguous missing data i.e. before and after every instance of '?' opening/closure); (4) balanced (insert '#' around the n largest block of missing data; define n using partitioning_round).")
+    parser.add_argument("-pm", "--partitioning_method", type=str, default="conservative", choices=["balanced", "conservative", "equal", "max", "None"], help="Method of partitioning. Options: (1) conservative (given blocks of contiguous invariants sorted by length, partition the n-largest block(s); define n using partitioning_round), (2) equal (insert # to divide the alignment into equal-length partitions; define the size of partitions using partitioning_size or the round of partitioning using partitioning_round); (3) max (insert '#' columns around blocks of contiguous missing data i.e. before and after every instance of '?' opening/closure); (4) balanced (insert '#' around the n largest block of missing data; define n using partitioning_round).")
     parser.add_argument("-pr", "--partitioning_round", type=parse_partitioning_round, help="Round of successive partitioning. Use it if partitioning_method is 'balanced', 'conservative' or 'equal'.", default=0)
     parser.add_argument("-pc", "--partitioning_conservative", type=str, default="midpoint", choices=["midpoint", "flank"], help="Placement mode for conservative partitioning. Use 'midpoint' (default) to insert one '#' in the middle of each selected invariant block, or 'flank' to insert '#' columns around each selected invariant block.")
+    parser.add_argument("-pms", "--partitioning_max_size", type=int, default=None, help="Initial maximum partition size. If specified, the alignment is first split into equal-length partitions of this size, and the selected partitioning method is then applied independently within each partition.")
     parser.add_argument("-ps", "--partitioning_size", type=int, default=None, help="Size of equal-length partitions if partitioning_method = 'equal'.")
 
     # Default
@@ -211,6 +212,7 @@ Examples:
             partitioning_method=args.partitioning_method,
             partitioning_round=args.partitioning_round,
             partitioning_conservative=args.partitioning_conservative,
+            partitioning_max_size=args.partitioning_max_size,
             partitioning_size=args.partitioning_size)
 
 if __name__ == "__main__":

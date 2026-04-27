@@ -22,5 +22,5 @@ List of parameters in prepDyn. Parameters can be either specified with long or s
 | `partitioning_method`    | `str`                 | `"conservative"` | Method to insert `#` markers: `'balanced'`, `'conservative'`, `'equal'`, `'max'`, or `"None"`.  |
 | `partitioning_round`     | `int`                 | `0`          | Number of rounds/selected blocks for relevant partitioning methods.  |
 | `partitioning_conservative` | `str`              | `"midpoint"` | Placement mode when `partitioning_method='conservative'`: `'midpoint'` inserts one `#` at the midpoint of each selected invariant block, and `'flank'` inserts `#` columns around each selected invariant block. |
+| `partitioning_max_size`  | `int`                 | –            | Initial maximum partition size. If specified, the alignment is first split into equal-length partitions of this size, and the selected partitioning method is then applied independently within each resulting partition. |
 | `partitioning_size`      | `int`                 | –            | Partition size for `partitioning_method='equal'`.                                 |
-
