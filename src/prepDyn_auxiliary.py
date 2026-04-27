@@ -1019,6 +1019,7 @@ def add_breaks_terminal(alignment):
 
 def classify_and_insert_hashtags(alignment, 
                                  partitioning_round=1, 
+                                 partitioning_conservative="midpoint",
                                  log_csv_output=False, 
                                  csv_file_path="contiguous_invariant_blocks.csv"):
     # Step 1: Classify columns as invariant or variant
@@ -1051,33 +1052,34 @@ def classify_and_insert_hashtags(alignment,
     if current_invariant_block:
         contiguous_invariant_blocks.append(current_invariant_block)
 
+    if partitioning_conservative not in {"midpoint", "flank"}:
+        raise ValueError("partitioning_conservative must be 'midpoint' or 'flank'.")
+
     # Step 3: Log and optionally process blocks
     contiguous_invariant_blocks.sort(key=lambda x: x['length'], reverse=True)
-    block_lengths = {}
-    for block in contiguous_invariant_blocks:
-        block_lengths.setdefault(block['length'], []).append(block)
 
     if partitioning_round == "max":
         add_breaks_terminal(alignment)  # Call the other function instead of inserting hashtags
     else:
         # Step 4: Track the positions for inserting hashtags
         hashtag_positions = []
-        block_lengths_sorted = sorted(block_lengths.keys(), reverse=True)
-        for block_length in block_lengths_sorted[:partitioning_round]:
-            blocks = block_lengths[block_length]
-            for block in blocks:
-                start_idx = block['start']
-                end_idx = start_idx + block['length'] - 1
-                middle_idx = (start_idx + end_idx) // 2
-                hashtag_positions.append(middle_idx)
+        selected_blocks = contiguous_invariant_blocks[:partitioning_round]
+        for block in selected_blocks:
+            start_idx = block['start']
+            end_idx = start_idx + block['length'] - 1
+
+            if partitioning_conservative == "midpoint":
+                hashtag_positions.append((start_idx + end_idx) // 2)
+            else:
+                hashtag_positions.extend([start_idx, end_idx + 1])
 
         # Step 5: Insert hashtags
         for seq_id, seq in alignment.items():
-            sorted_positions = sorted(hashtag_positions)
+            sorted_positions = sorted(set(hashtag_positions))
             shift = 0
-            for middle_idx in sorted_positions:
-                adjusted_idx = middle_idx + shift
-                seq = seq[:adjusted_idx + 1] + '#' + seq[adjusted_idx + 1:]
+            for insert_idx in sorted_positions:
+                adjusted_idx = insert_idx + shift
+                seq = seq[:adjusted_idx] + '#' + seq[adjusted_idx:]
                 shift += 1
             alignment[seq_id] = seq
 
@@ -2203,7 +2205,8 @@ def prepDyn(input_file=None,
             n2question=None,
             # Partitioning parameters
             partitioning_round=0,
-            partitioning_method="balanced",
+            partitioning_method="conservative",
+            partitioning_conservative="midpoint",
             partitioning_size=None
             ):
     """
@@ -2246,13 +2249,18 @@ def prepDyn(input_file=None,
                                    merges adjacent blocks flanked by # if their combined length is below
                                    a threshold (the n-largest block of missing data).
                                    - 'conservative': Blocks containing only invariant columns are sorted
-                                   by length and '#' column(s) inserted at the midpoint of the n-largest
-                                   block(s). Must define n using partitioning_round.
+                                   by length and '#' column(s) inserted either at the midpoint or around
+                                   the flanks of the n-largest block(s). Must define n using
+                                   partitioning_round.
                                    - 'equal: Equal-length partitions are created by specifying their size
                                    or their round. If partitioning_round = 1, only 1 '#' column is
                                    inserted; if partitioning_round = 2, then 2 '#' columns are inserted.
                                    - 'max': '#' columns are inserted around blocks of missing data (every
                                    instance of '?' opening/closure but not '?' extension).
+        partitioning_conservative (str): Conservative partition placement mode. Use 'midpoint'
+                                         (default) to insert one '#' in the middle of each selected
+                                         invariant block, or 'flank' to insert '#' columns on both sides
+                                         of each selected invariant block.
         partitioning_round (int): Number of partitioning round. Invariant regions are sorted by length
                                   in descendant order and the n-largest block(s) partitioned using '#'.
                                   If "max" is specified, pound signs are inserted arund all blocks of
@@ -2295,6 +2303,7 @@ def prepDyn(input_file=None,
         "n2question": n2question,
         "partitioning_method": partitioning_method,
         "partitioning_round": partitioning_round,
+        "partitioning_conservative": partitioning_conservative,
         "partitioning_size": partitioning_size,
     }
 
@@ -2335,6 +2344,7 @@ def prepDyn(input_file=None,
                            n2question,
                            partitioning_round,
                            partitioning_method,
+                           partitioning_conservative,
                            partitioning_size
                            ):
 
@@ -2377,7 +2387,7 @@ def prepDyn(input_file=None,
                                 GB_input=None, input_format="dict", MSA=MSA,
                                 orphan_method=orphan_method, orphan_threshold=orphan_threshold, percentile=percentile, del_inv=del_inv,
                                 internal_method=internal_method, internal_column_ranges=internal_column_ranges, internal_leaves=internal_leaves, internal_threshold=internal_threshold,
-                                n2question=n2question, partitioning_method=partitioning_method, partitioning_round=partitioning_round, partitioning_size=partitioning_size,
+                                n2question=n2question, partitioning_method=partitioning_method, partitioning_round=partitioning_round, partitioning_conservative=partitioning_conservative, partitioning_size=partitioning_size,
                                 output_format=output_format, log=log, sequence_names=False,
                                 _all_sequence_ids=_all_sequence_ids, _is_top_level_call=False, _original_cmd_line=_original_cmd_line,
                                 output_file=specific_output_prefix_for_recursion)
@@ -2434,7 +2444,7 @@ def prepDyn(input_file=None,
                                 GB_input=None, input_format="dict", MSA=False,
                                 orphan_method=orphan_method, orphan_threshold=orphan_threshold, percentile=percentile, del_inv=del_inv,
                                 internal_method=internal_method, internal_column_ranges=internal_column_ranges, internal_leaves=internal_leaves, internal_threshold=internal_threshold,
-                                n2question=n2question, partitioning_method=partitioning_method, partitioning_round=partitioning_round, partitioning_size=partitioning_size,
+                                n2question=n2question, partitioning_method=partitioning_method, partitioning_round=partitioning_round, partitioning_conservative=partitioning_conservative, partitioning_size=partitioning_size,
                                 output_format=output_format, log=log, sequence_names=False,
                                 _all_sequence_ids=_all_sequence_ids, _is_top_level_call=False, _original_cmd_line=_original_cmd_line,
                                 output_file=specific_output_prefix)
@@ -2471,7 +2481,12 @@ def prepDyn(input_file=None,
             alignment = {record.id: str(record.seq) for record in alignment_obj}
             _all_sequence_ids.update(alignment.keys())
         else:
-            raise ValueError(f"Invalid input_val type or path: {input_val}.")
+            if isinstance(input_val, str):
+                raise FileNotFoundError(
+                    f"Input path not found: {input_val} "
+                    f"(current working directory: {os.getcwd()})"
+                )
+            raise ValueError(f"Invalid input_val type: {type(input_val).__name__}.")
 
 
         ### FIX: PART 1 - Capture "before" statistics right after loading ###
@@ -2541,7 +2556,8 @@ def prepDyn(input_file=None,
         if partitioning_method == "conservative" and partitioning_round > 0:
             alignment, conservative_blocks = classify_and_insert_hashtags(
                 alignment,
-                partitioning_round=partitioning_round
+                partitioning_round=partitioning_round,
+                partitioning_conservative=partitioning_conservative
             )
 
         elif partitioning_method == "equal":
@@ -2640,6 +2656,8 @@ def prepDyn(input_file=None,
                             log_file.write(f" (partitioning_size={partitioning_size})")
                         elif partitioning_method in ["conservative", "balanced"]:
                             log_file.write(f" (partitioning_round={partitioning_round})")
+                            if partitioning_method == "conservative":
+                                log_file.write(f" (partitioning_conservative={partitioning_conservative})")
                         elif partitioning_method == "max":
                             log_file.write(" (inserted at '?' block boundaries)")
                         log_file.write("\n")
@@ -2703,6 +2721,7 @@ def prepDyn(input_file=None,
                                                    n2question=n2question,
                                                    partitioning_round=partitioning_round,
                                                    partitioning_method=partitioning_method,
+                                                   partitioning_conservative=partitioning_conservative,
                                                    partitioning_size=partitioning_size)
 
     # --- Final sequence_names.txt and overall log writing (Unchanged) ---

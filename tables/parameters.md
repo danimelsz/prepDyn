@@ -19,8 +19,8 @@ List of parameters in prepDyn. Parameters can be either specified with long or s
 | `internal_leaves`        | `str` or `list`       | `"all"`      | Sequences to apply internal gap replacement to.                                   |
 | `internal_threshold`     | `int`                 | –            | Gap length threshold for `'semi'` method.                                         |
 | `n2question`             | `str`, `list`, `None` | `None`       | Replace ambiguous `'N'` with `?`. Options: `'all'`, list of names, or `None`.     |
-| `partitioning_method`    | `str`                 | `"balanced"` | Method to insert `#` markers: `'balanced'`, `'conservative'`, `'equal'`, `'max'`. |
-| `partitioning_round`     | `int`                 | `0`          | Number of partitions/rounds for relevant partitioning methods.                    |
+| `partitioning_method`    | `str`                 | `"conservative"` | Method to insert `#` markers: `'balanced'`, `'conservative'`, `'equal'`, `'max'`, or `"None"`.  |
+| `partitioning_round`     | `int`                 | `0`          | Number of rounds/selected blocks for relevant partitioning methods.  |
+| `partitioning_conservative` | `str`              | `"midpoint"` | Placement mode when `partitioning_method='conservative'`: `'midpoint'` inserts one `#` at the midpoint of each selected invariant block, and `'flank'` inserts `#` columns around each selected invariant block. |
 | `partitioning_size`      | `int`                 | –            | Partition size for `partitioning_method='equal'`.                                 |
-
 
