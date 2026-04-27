@@ -83,7 +83,7 @@ Check the [**Wiki**](https://github.com/dnakamuraz/prepDyn/wiki/Tutorials) page 
 ## FAQ
 
 <details>
-<summary><strong>What is prepDyn used for?</strong></summary>
+<summary>What is prepDyn used for?</strong></summary>
 
 prepDyn is used to preprocess DNA sequences for dynamic homology in POY/PhyG,
 including trimming orphan nucleotides, handling missing data,
@@ -92,7 +92,7 @@ and generating partitions.
 </details>
 
 <details>
-<summary><strong>Can prepDyn be used for phylogenetic programs other than POY/PhyG?</strong></summary>
+<summary>Can prepDyn be used for phylogenetic programs other than POY/PhyG?</strong></summary>
 
 Yes. If partitioning is skipped, prepDyn can still preprocess
 DNA sequences for other phylogenetic programs that treat gaps
@@ -101,7 +101,7 @@ as a fifth character-state (e.g., TNT).
 </details>
 
 <details>
-<summary><strong>My sequences are too long and POY/PhyG are unable to start phylogenetic analyses. What should I do?</strong></summary>
+<summary>My sequences are too long and POY/PhyG are unable to start phylogenetic analyses. What should I do?</strong></summary>
 
 Dynamic homology implemented in POY/PhyG is NP-hard. Thus, POY/PhyG is able to find better tree and alignment hypotheses than static homology at the cost of runtime and memory. If sequences are too long, use the parameter `partitioning_max_size`.  
 If specified, sequences are initially split into equal-length
