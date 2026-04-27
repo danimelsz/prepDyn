@@ -94,7 +94,9 @@ and generating partitions.
 <details>
 <summary>What is dynamic homology?</summary>
 
-Two main strategies are used to align DNA sequences and determine homology. In static homology, sequences are first aligned using a similarity-based (= phenetic) multiple sequence alignment, and that fixed alignment is then evaluated across trees to find the lowest-cost tree. In dynamic homology, unaligned sequences are optimized directly on each tree during the search, and homologous nucleotides are inferred afterward from the best tree via implied alignments. Finding the lowest-cost tree from unaligned sequences under this framework is NP-hard, so practical analyses rely on heuristic methods (e.g. direct optimization and iterative-pass). Dynamic homology frequently finds more optimal hypotheses than static homology at the cost of computational resources (runtime and memory).
+Two main strategies are used to align DNA sequences and determine homology. In static homology, sequences are first aligned using a similarity-based (= phenetic) multiple sequence alignment, and that fixed alignment is then evaluated across trees to find the lowest-cost tree. In dynamic homology, unaligned sequences are optimized directly on each tree during the search, and homologous nucleotides are inferred afterward from the best tree via implied alignments. Thus, dynamic homology accounts for alignment uncertainty, whereas static homology relies on a single possible alignment. Furthermore, dynamic homology uses the same optimality criterion throughout all steps, whereas static homology does not.
+
+Finding the lowest-cost tree from unaligned sequences under this framework is NP-hard, so practical analyses rely on heuristic methods (e.g. direct optimization and iterative-pass). Dynamic homology frequently finds more optimal hypotheses than static homology at the cost of computational resources (runtime and memory).
 
 </details>
 
