@@ -83,7 +83,7 @@ Check the [**Wiki**](https://github.com/dnakamuraz/prepDyn/wiki/Tutorials) page 
 ## FAQ
 
 <details>
-<summary>What is prepDyn used for?</strong></summary>
+<summary>What is prepDyn used for?</summary>
 
 prepDyn is used to preprocess DNA sequences for dynamic homology in POY/PhyG,
 including trimming orphan nucleotides, handling missing data,
@@ -92,19 +92,35 @@ and generating partitions.
 </details>
 
 <details>
-<summary>Can prepDyn be used for phylogenetic programs other than POY/PhyG?</strong></summary>
+<summary>Can prepDyn be used for phylogenetic programs other than POY/PhyG?</summary>
 
 Yes. If partitioning is skipped, prepDyn can still preprocess
-DNA sequences for other phylogenetic programs that treat gaps
-as a fifth character-state (e.g., TNT).
+DNA sequences for other phylogenetic programs. The Step 3 is particularly useful to identify missing data and avoid downstream problems in software that treat gaps as a fifth character-state (e.g., TNT).
 
 </details>
 
 <details>
-<summary>My sequences are too long and POY/PhyG are unable to start phylogenetic analyses. What should I do?</strong></summary>
+<summary>My sequences are too long and POY/PhyG are unable to start phylogenetic analyses. What should I do?</summary>
 
-Dynamic homology implemented in POY/PhyG is NP-hard. Thus, POY/PhyG is able to find better tree and alignment hypotheses than static homology at the cost of runtime and memory. If sequences are too long, use the parameter `partitioning_max_size`.  
-If specified, sequences are initially split into equal-length
+Dynamic homology implemented in POY/PhyG is NP-hard. Thus, POY/PhyG is able to find better tree and alignment hypotheses than static homology at the cost of runtime and memory. If sequences are too long, use the parameter `partitioning_max_size`.   If specified, sequences are initially split into equal-length
 partitions of size X before applying the partitioning method. 
+
+</details>
+
+<details>
+<summary>What is the best partitioning strategy?</summary>
+
+The best partitioning strategy is dataset-dependent and the user must test it empirically. Empirical analyses indicate that conservative, equal-length, and maximum partitioning perform better.
+
+</details>
+
+<details>
+<summary>What are orphan nucleotides and which strategy is better to handle them?</summary>
+
+Low-quality regions, such as sequencing errors that accumulate near sequence termini, often lead to alignment artifacts. One common artifact is orphan nucleotides, defined as short stretches of nucleotides that appear separated from the main sequence block by long runs of gaps. We recommend removing these regions during preprocessing. 
+
+Operationally, orphan nucleotides can be identified as contiguous nucleotide segments shorter than a user-defined threshold x, located at the flanks of a sequence and separated from the nearest substantial nucleotide block by gap regions longer than x. Because the optimal value of x depends on the characteristics of the dataset, it should be specified by the user (orphan_threshold) via visual inspection of alignment. Based on our experience, values between 25 and 45 generally perform well across many datasets. When a single orphan threshold is not feasible, other methods can be used (e.g. adaptive orphan threshold and unsupervised machine learning to classify orphan and non-orphan blocks). 
+
+In cases where orphan nucleotides are interpreted as artifacts of static homology rather than sequencing error, an alternative to removal is to iteratively reposition these short segments so that they abut the nearest nucleotide block (orphan_action = "push"), instead of discarding them (orphan_action = "trim").
 
 </details>
