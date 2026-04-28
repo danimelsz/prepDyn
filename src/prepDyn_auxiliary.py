@@ -1818,13 +1818,14 @@ from Bio import SeqIO
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 
-def UP2AP(input_fasta, output_fasta):
+def UP2AP(input_fasta, output_fasta, keep_unusual=False):
     """
     1. Replaces '#' with 15 'w's.
     2. Aligns using MAFFT.
     3. Replaces aligned 'w' blocks (contiguous or gapped) back to '#'.
     4. Rectifies alignment: pads partitions to ensure '#' are vertically aligned.
     5. Cleans alignment: removes columns that contain ONLY gaps (-).
+    6. If keep_unusual=False, removes '#' columns and replaces any remaining '?' with '-'.
     """
     
     # Configuration
@@ -1866,7 +1867,11 @@ def UP2AP(input_fasta, output_fasta):
         temp_input.close()
 
         # --- STEP 2: Alignment (Run MAFFT) ---
-        cmd = ["mafft", "--auto", "--quiet", temp_input_name]
+        cmd = ["mafft", "--auto", "--quiet"]
+        if keep_unusual:
+            cmd.append("--anysymbol")
+        cmd.append(temp_input_name)
+
         with open(temp_output_name, "w") as out_handle:
             process = subprocess.run(cmd, stdout=out_handle, stderr=subprocess.PIPE, text=True)
             
@@ -1918,6 +1923,13 @@ def UP2AP(input_fasta, output_fasta):
         else:
             # Keep the column ONLY IF it is not composed entirely of '-'
             valid_columns = [col for col in zip(*rectified_seqs) if not all(c == '-' for c in col)]
+            
+            if not keep_unusual:
+                # '#' forms full columns due to Step 4, so dropping columns with '#' perfectly removes them.
+                # '?' are normally ignored and removed by MAFFT without --anysymbol. 
+                # If any survive, replace them safely with '-' to protect alignment length.
+                valid_columns = [col for col in valid_columns if '#' not in col]
+                valid_columns = [tuple('-' if c == '?' else c for c in col) for col in valid_columns]
             
             # zip(*valid_columns) transposes back to rows (sequences)
             if valid_columns:

@@ -108,7 +108,7 @@ Yes. If partitioning is skipped, **prepDyn** can still preprocess DNA sequences 
 </details>
 
 <details>
-<summary>My sequences are too long and POY/PhyG are unable to start phylogenetic analyses. What should I do?</summary>
+<summary>My sequences are too long and POY/PhyG is unable to start phylogenetic analyses. What should I do?</summary>
 
 Dynamic homology implemented in **POY/PhyG** is NP-hard. If sequences are too long, use the parameter `partitioning_max_size`, so that sequences are initially split into equal-length partitions of size X before applying the partitioning methods (balanced, conservative, equal, maximum) in each resulting chunk.
 

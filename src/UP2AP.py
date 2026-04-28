@@ -89,20 +89,22 @@ from Bio.SeqRecord import SeqRecord
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Convert unaligned sequences containing pound signs '#' into aligned sequences.",
+        description="Convert unaligned sequences containing pound signs '#' or '?' into aligned sequences.",
         formatter_class=argparse.RawTextHelpFormatter,
         epilog="""\
-Examples: python UP2AP.py --alignment aln.fas --new_seqs 12s_sp_new.fas --output aln_updated.fas --write_names
+Examples: python UP2AP.py -i aln.fas -o aln_updated.fas -k
 """)
     
     parser.add_argument("-i", "--input_fasta", type=str, required=True, help="Path to FASTA input of unaligned sequences containing pound signs.", default=None)
     parser.add_argument("-o", "--output_fasta", type=str, required=True, help="Path to FASTA output of aligned sequences containing pound signs.", default=None)     
+    parser.add_argument("-k", "--keep_unusual", action="store_true", help="Keep the pound signs (#) and question marks (?) in the output. Default is False.")
 
     args = parser.parse_args()
 
     UP2AP(
         input_fasta=args.input_fasta, 
-        output_fasta=args.output_fasta)
+        output_fasta=args.output_fasta,
+        keep_unusual=args.keep_unusual)
 
 if __name__ == "__main__":
     main()
