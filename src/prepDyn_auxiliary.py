@@ -438,7 +438,7 @@ def GB2MSA_2(alignment_file):
 
     return cleaned_file
 
-def GB2MSA_3(alignment_dict, orphan_threshold=6, log=False):
+def GB2MSA_3(alignment_dict, orphan_threshold=10, log=False):
     """
     Replaces specific blocks in a DNA alignment with '?':
     - Contiguous gap blocks (length >= orphan_threshold) that are adjacent
@@ -689,6 +689,24 @@ def delete_orphan_nucleotides2(alignment, orphan_threshold, log_changes=False, o
                 i += 1
         return blocks
 
+    # --- REFINEMENT STEP: Prevent deletion of shared isolated blocks ---
+    def has_shared_homology(start, end, block_str, current_seq_id):
+        """
+        Checks if at least one other sequence shares this exact block at this exact position,
+        AND ensures that the block is similarly isolated (flanked by gaps/missing data) in the other sequence.
+        """
+        for other_id, other_seq in alignment.items():
+            if other_id != current_seq_id:
+                if other_seq[start:end].lower() == block_str.lower():
+                    # Ensure it is actually an isolated block in the other sequence too
+                    left_is_gap = (start == 0) or (other_seq[start - 1] in ['-', '?', '#'])
+                    right_is_gap = (end == len(other_seq)) or (other_seq[end] in ['-', '?', '#'])
+                    
+                    if left_is_gap and right_is_gap:
+                        return True
+        return False
+    # -------------------------------------------------------------------
+
     # For tracking maximum allowed modifications in 'adaptive'
     seq_mods = {seq_id: 0 for seq_id in alignment}
     # 5% limit with a generous baseline of 3 allowed nucleotides to move/trim for short sequences
@@ -704,7 +722,7 @@ def delete_orphan_nucleotides2(alignment, orphan_threshold, log_changes=False, o
 
     alignment_changed = True
     
-    # Adaptive loop stopping condition modified here:
+    # Adaptive loop stopping condition
     while alignment_changed or (orphan_method == "adaptive" and current_threshold <= orphan_threshold):
         alignment_changed = False
 
@@ -734,11 +752,17 @@ def delete_orphan_nucleotides2(alignment, orphan_threshold, log_changes=False, o
                 made_change_left = False
                 made_change_right = False
 
-                # Evaluate Left side condition (Only checking the flanking block)
+                # Evaluate Left side condition
                 if orphan_method == "adaptive":
                     cond_left = (left_len <= dynamic_threshold) and (seq_mods[seq_id] + left_len <= seq_limits[seq_id])
                 else:
                     cond_left = (left_len < dynamic_threshold) and (gap_count_left > dynamic_threshold)
+
+                # APPLY REFINEMENT VETO
+                if cond_left:
+                    block_str_left = ''.join(seq_list[first_start:first_end])
+                    if has_shared_homology(first_start, first_end, block_str_left, seq_id):
+                        cond_left = False # Veto! Another terminal has this exact isolated block.
 
                 if cond_left:
                     if orphan_action == "trim":
@@ -756,15 +780,20 @@ def delete_orphan_nucleotides2(alignment, orphan_threshold, log_changes=False, o
                     made_change_left = True
                     changed_this_seq = True
 
-                # If left changed, right block indices might be invalidated. We continue loop to re-find blocks.
                 if made_change_left:
                     continue
 
-                # Evaluate Right side condition (Only checking the flanking block)
+                # Evaluate Right side condition
                 if orphan_method == "adaptive":
                     cond_right = (right_len <= dynamic_threshold) and (seq_mods[seq_id] + right_len <= seq_limits[seq_id])
                 else:
                     cond_right = (right_len < dynamic_threshold) and (gap_count_right > dynamic_threshold)
+
+                # APPLY REFINEMENT VETO
+                if cond_right:
+                    block_str_right = ''.join(seq_list[last_start:last_end])
+                    if has_shared_homology(last_start, last_end, block_str_right, seq_id):
+                        cond_right = False # Veto! Another terminal has this exact isolated block.
 
                 if cond_right:
                     if orphan_action == "trim":
@@ -1922,7 +1951,7 @@ def GB2MSA(input_file,
            delimiter=',', 
            write_names=False, 
            log=False, 
-           orphan_threshold=6):
+           orphan_threshold=10):
     """
     Complete GenBank-to-MSA pipeline:
     1. Downloads sequences from GenBank and aligns them by gene using MAFFT.
