@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 #-*- coding: utf-8 -*-
 
-# auxiliary.py
+# prepDyn.py
 # prepDyn - Copyright (C) 2025
 # Daniel Y. M. Nakamura
 # GNU General Public Licence version 3.0
@@ -163,6 +163,7 @@ Examples:
     parser.add_argument("-oa", "--orphan_action", type=str, help="Action for orphan nucleotides. 'trim' (default) removes them. 'push' moves them adjacent to the next block iteratively.", choices=["trim", "push"], default="trim")
     parser.add_argument("-op", "--percentile", type=float, help="Percentile of gap lengths to define the orphan threshold if orphan_method='percentile' (default: 25).", default=25.0)
     parser.add_argument("-di", "--del_inv", default=True, type=str2bool, help="Trim invariant terminal columns (default: True)")
+    parser.add_argument("-mo", "--min_overlap", type=int, default=10, help="Minimum overlap length to merge multi-amplicons when downloading from GenBank (default: 10).", default=10)
 
     # Missing data
     parser.add_argument("-g2q", "--internal_method", help="Method to handle internal missing data: 'manual', 'semi', or 'none' (default)", default=None)
@@ -204,6 +205,7 @@ Examples:
             orphan_action=args.orphan_action,
             percentile=args.percentile,
             del_inv=args.del_inv,
+            min_overlap=args.min_overlap,
             # Missing data parameters
             n2question=args.n2question,
             internal_method=args.internal_method,

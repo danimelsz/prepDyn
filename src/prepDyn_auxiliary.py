@@ -235,11 +235,109 @@ def remove_leading_underscores(file_path):
             os.rename(file_path, new_file_path)
         return new_file_path
     
+# Function 5. Merge overlapping sequences
+def merge_overlapping_sequences(seq_list, min_overlap=10, mismatch_rate=0.05):
+    """
+    Tries to merge a list of sequences by identifying overlaps.
+    If some sequences don't overlap, they remain separate.
+    Returns a list of merged (and unmerged) sequences, along with a log of operations.
+    """
+    merge_log = []
+    if not seq_list:
+        return [], merge_log
+        
+    # Operate on upper case to ensure case-insensitive matching
+    seq_list_upper = [s.upper() for s in seq_list]
+        
+    merged_any = True
+    while merged_any:
+        merged_any = False
+        for i in range(len(seq_list_upper)):
+            for j in range(i + 1, len(seq_list_upper)):
+                seq1 = seq_list_upper[i]
+                seq2 = seq_list_upper[j]
+                
+                # 1. Check containment first
+                if seq1 in seq2:
+                    merge_log.append(f"Amplicon of {len(seq1)}bp was fully contained in {len(seq2)}bp amplicon (merged).")
+                    seq_list_upper.pop(i)
+                    merged_any = True
+                    break
+                if seq2 in seq1:
+                    merge_log.append(f"Amplicon of {len(seq2)}bp was fully contained in {len(seq1)}bp amplicon (merged).")
+                    seq_list_upper.pop(j)
+                    merged_any = True
+                    break
+                    
+                # 2. Check overlap: seq1 suffix with seq2 prefix
+                overlap_len = 0
+                best_merged = None
+                
+                len1, len2 = len(seq1), len(seq2)
+                max_k = min(len1, len2)
+                
+                # Check seq1 suffix matching seq2 prefix
+                for k in range(max_k, min_overlap - 1, -1):
+                    s1_suffix = seq1[-k:]
+                    s2_prefix = seq2[:k]
+                    
+                    if s1_suffix == s2_prefix:
+                        overlap_len = k
+                        best_merged = seq1 + seq2[k:]
+                        break
+                        
+                    max_mismatches = max(2, int(mismatch_rate * k))
+                    mismatches = 0
+                    for a, b in zip(s1_suffix, s2_prefix):
+                        if a != b:
+                            mismatches += 1
+                            if mismatches > max_mismatches:
+                                break
+                    if mismatches <= max_mismatches:
+                        overlap_len = k
+                        best_merged = seq1 + seq2[k:]
+                        break
+                        
+                # Check seq2 suffix matching seq1 prefix
+                if not best_merged:
+                    for k in range(max_k, min_overlap - 1, -1):
+                        s2_suffix = seq2[-k:]
+                        s1_prefix = seq1[:k]
+                        
+                        if s2_suffix == s1_prefix:
+                            overlap_len = k
+                            best_merged = seq2 + seq1[k:]
+                            break
+                            
+                        max_mismatches = max(2, int(mismatch_rate * k))
+                        mismatches = 0
+                        for a, b in zip(s2_suffix, s1_prefix):
+                            if a != b:
+                                mismatches += 1
+                                if mismatches > max_mismatches:
+                                    break
+                        if mismatches <= max_mismatches:
+                            overlap_len = k
+                            best_merged = seq2 + seq1[k:]
+                            break
+                        
+                if best_merged:
+                    merge_log.append(f"Merged {len1}bp and {len2}bp amplicons with an overlap of {overlap_len}bp.")
+                    # Replace seq1 and seq2 with best_merged
+                    seq_list_upper.pop(j)
+                    seq_list_upper[i] = best_merged
+                    merged_any = True
+                    break
+            if merged_any:
+                break
+                
+    return seq_list_upper, merge_log
+
 ############################################   
 # MAIN FUNCTIONS: STEP 1. DATA COLLECTION  #
 ############################################
 
-def GB2MSA_1(input_file, output_prefix, delimiter=',', write_names=True):
+def GB2MSA_1(input_file, output_prefix, delimiter=',', write_names=True, min_overlap=10):
     """
     Downloads GenBank sequences based on accession numbers in a CSV/TSV file and aligns them by gene using 
     MAFFT. If two fragments of the same locus are concatenated with no overlap between them, the space
@@ -262,10 +360,17 @@ def GB2MSA_1(input_file, output_prefix, delimiter=',', write_names=True):
     write_names : bool, optional (default=True)
         If True, writes a TXT file listing all sequence names (from the first column).
 
+    min_overlap : int, optional (default=10)
+        Minimum overlap length to merge multi-amplicons downlaoded from GenBank.
+
     Returns:
     --------
     aligned_files : list of str
         List of file paths to the MAFFT-aligned FASTA files for each gene.
+    gb1_logs : dict
+        A dictionary containing merge logs for each sequence and gene.
+    gene_names : list
+        List of gene names parsed from the input file.
     """
     # Open the input CSV/TSV file
     with open(input_file, newline='') as file:
@@ -289,6 +394,7 @@ def GB2MSA_1(input_file, output_prefix, delimiter=',', write_names=True):
                 nf.write(f"{name}\n")
 
     aligned_files = []  # List to store paths of aligned output files
+    gb1_logs = {gene: {} for gene in gene_names}
 
     # Iterate over each gene (i.e., each column after the first)
     for gene_idx, gene_name in enumerate(gene_names):
@@ -317,6 +423,12 @@ def GB2MSA_1(input_file, output_prefix, delimiter=',', write_names=True):
                     except Exception as e:
                         print(f"Error fetching {acc}: {e}")
 
+                # Merge overlapping sequences if possible
+                sequences, m_log = merge_overlapping_sequences(sequences, min_overlap=min_overlap)
+
+                if m_log:
+                    gb1_logs[gene_name][seq_name] = m_log
+
                 # Combine multiple sequences with 'W' delimiters to mark junctions (to be handled later)
                 combined_seq = "WWWWWWWWWWWWWWW".join(sequences)
                 
@@ -333,7 +445,7 @@ def GB2MSA_1(input_file, output_prefix, delimiter=',', write_names=True):
         # Append the aligned file path to the result list
         aligned_files.append(aligned_file)
 
-    return aligned_files  # Return list of aligned output file paths
+    return aligned_files, gb1_logs, gene_names  
 
 def GB2MSA_2(alignment_file):
     """
@@ -1963,7 +2075,8 @@ def GB2MSA(input_file,
            delimiter=',', 
            write_names=False, 
            log=False, 
-           orphan_threshold=10):
+           orphan_threshold=10,
+           min_overlap=10):
     """
     Complete GenBank-to-MSA pipeline:
     1. Downloads sequences from GenBank and aligns them by gene using MAFFT.
@@ -1978,7 +2091,7 @@ def GB2MSA(input_file,
     start_cpu = time.process_time()
 
     # Step 1: Generate aligned FASTA files
-    aligned_files = GB2MSA_1(input_file, output_prefix, delimiter=delimiter, write_names=write_names)
+    aligned_files, gb1_logs, gene_names = GB2MSA_1(input_file, output_prefix, delimiter=delimiter, write_names=write_names, min_overlap=min_overlap)
 
     # Step 2: Clean each aligned FASTA file
     cleaned_files = []
@@ -2021,7 +2134,7 @@ def GB2MSA(input_file,
         if aligned_file.endswith("_aligned.fasta") and os.path.exists(aligned_file):
             os.remove(aligned_file)
 
-    # Step 7: Log timing if requested
+    # Step 7: Log timing and amplicons if requested
     if log:
         end_wall = time.time()
         end_cpu = time.process_time()
@@ -2031,7 +2144,32 @@ def GB2MSA(input_file,
         log_file = f"{output_prefix}_log.txt"
         with open(log_file, "a") as lf:
             lf.write(f"--- GB2MSA run for '{output_prefix}' ---\n")
-            lf.write(f"Wall clock time: {wall_time:.2f} seconds\n")
+            
+            # Log amplicon merges and ? insertions per gene
+            for gene_name, cleaned_file in zip(gene_names, cleaned_files):
+                lf.write(f"\n--- Locus: {gene_name} ---\n")
+                gene_logs = gb1_logs.get(gene_name, {})
+                
+                # Scan final files to determine where '?' ended up natively in the alignment
+                records = list(SeqIO.parse(cleaned_file, "fasta"))
+                for record in records:
+                    seq = str(record.seq)
+                    q_blocks = []
+                    for m in re.finditer(r'\?+', seq):
+                        q_blocks.append((m.start() + 1, m.end()))  # 1-based index logging
+                    
+                    # Fetch merge/join log events pre-alignment
+                    events = gene_logs.get(record.id, [])
+                    # Append alignment coordinate logs
+                    for start, end in q_blocks:
+                        events.append(f"Internal missing data (?) at alignment columns {start}-{end} (length: {end-start+1})")
+                        
+                    if events:
+                        lf.write(f"{record.id}:\n")
+                        for ev in events:
+                            lf.write(f"  - {ev}\n")
+                            
+            lf.write(f"\nWall clock time: {wall_time:.2f} seconds\n")
             lf.write(f"CPU time: {cpu_time:.2f} seconds\n\n")
 
     return cleaned_files
@@ -2472,6 +2610,7 @@ def prepDyn(input_file=None,
             orphan_action="trim",
             percentile=25,
             del_inv=True,
+            min_overlap=10,
             # Missing data parameters
             internal_method=None,
             internal_column_ranges=None,
@@ -2512,6 +2651,7 @@ def prepDyn(input_file=None,
                              'push' moves them adjacent to the next block iteratively.
         percentile (float): Used with orphan_method = 'percentile' to define trimming threshold.
         del_inv (bool): Whether to trim invariant terminal columns. Default is True.
+        min_overlap (int): Minimum overlap length to merge multi-amplicons when downloading from GenBank. Default is 10.
         internal_method (str): Defines how to identify internal missing data. Automatic identificaton
                                of missing data is made if GB_input is provided. Otherwise, naive
                                options to identify internal missing data are:
@@ -2579,6 +2719,7 @@ def prepDyn(input_file=None,
         "orphan_action": orphan_action,
         "percentile": percentile,
         "del_inv": del_inv,
+        "min_overlap": min_overlap,
         "internal_method": internal_method,
         "internal_column_ranges": internal_column_ranges,
         "internal_leaves": internal_leaves,
@@ -2622,6 +2763,7 @@ def prepDyn(input_file=None,
                            orphan_action,
                            percentile,
                            del_inv,
+                           min_overlap,
                            internal_method,
                            internal_column_ranges,
                            internal_leaves,
@@ -2652,7 +2794,7 @@ def prepDyn(input_file=None,
             print("Running GB2MSA on GenBank input...")
             
             gb_output_prefix_for_gb2msa = output_file 
-            cleaned_files = GB2MSA(GB_input, output_prefix=gb_output_prefix_for_gb2msa, write_names=False, log=False)
+            cleaned_files = GB2MSA(GB_input, output_prefix=gb_output_prefix_for_gb2msa, write_names=False, log=log, min_overlap=min_overlap)
             
             for file_path_from_gb2msa in cleaned_files:
                 file_basename_no_ext = os.path.splitext(os.path.basename(file_path_from_gb2msa))[0]
@@ -2671,7 +2813,7 @@ def prepDyn(input_file=None,
                 _all_sequence_ids.update(alignment_dict.keys())
                 _prepDyn_recursive(input_val=alignment_dict,
                                 GB_input=None, input_format="dict", MSA=MSA,
-                                orphan_method=orphan_method, orphan_threshold=orphan_threshold, orphan_action=orphan_action, percentile=percentile, del_inv=del_inv,
+                                orphan_method=orphan_method, orphan_threshold=orphan_threshold, orphan_action=orphan_action, percentile=percentile, del_inv=del_inv, min_overlap=min_overlap,
                                 internal_method=internal_method, internal_column_ranges=internal_column_ranges, internal_leaves=internal_leaves, internal_threshold=internal_threshold,
                                 n2question=n2question, partitioning_method=partitioning_method, partitioning_round=partitioning_round, partitioning_conservative=partitioning_conservative, partitioning_max_size=partitioning_max_size, partitioning_size=partitioning_size,
                                 output_format=output_format, log=log, sequence_names=False,
@@ -2728,7 +2870,7 @@ def prepDyn(input_file=None,
                         _all_sequence_ids.update(current_file_alignment.keys())
                         _prepDyn_recursive(input_val=current_file_alignment,
                                 GB_input=None, input_format="dict", MSA=False,
-                                orphan_method=orphan_method, orphan_threshold=orphan_threshold, orphan_action=orphan_action, percentile=percentile, del_inv=del_inv,
+                                orphan_method=orphan_method, orphan_threshold=orphan_threshold, orphan_action=orphan_action, percentile=percentile, del_inv=del_inv, min_overlap=min_overlap,
                                 internal_method=internal_method, internal_column_ranges=internal_column_ranges, internal_leaves=internal_leaves, internal_threshold=internal_threshold,
                                 n2question=n2question, partitioning_method=partitioning_method, partitioning_round=partitioning_round, partitioning_conservative=partitioning_conservative, partitioning_max_size=partitioning_max_size, partitioning_size=partitioning_size,
                                 output_format=output_format, log=log, sequence_names=False,
@@ -3068,6 +3210,7 @@ def prepDyn(input_file=None,
                                                    orphan_action=orphan_action,
                                                    percentile=percentile,
                                                    del_inv=del_inv,
+                                                   min_overlap=min_overlap,
                                                    internal_method=internal_method,
                                                    internal_column_ranges=internal_column_ranges,
                                                    internal_leaves=internal_leaves,

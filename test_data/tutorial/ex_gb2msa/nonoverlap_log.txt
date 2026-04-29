@@ -1,0 +1,11 @@
+--- GB2MSA run for 'test_data/tutorial/ex_gb2msa/nonoverlap' ---
+
+--- Locus: 12S ---
+QCAZ_41826:
+  - Internal missing data (?) at alignment columns 929-960 (length: 32)
+
+--- Locus: CYTB ---
+
+Wall clock time: 30.61 seconds
+CPU time: 0.60 seconds
+

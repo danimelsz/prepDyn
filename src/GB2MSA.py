@@ -105,9 +105,8 @@ def main():
         description="GB2MSA downloads sequences from GenBank and performs multiple sequence alignment using MAFFT. If >1 non-overlapping fragments of the same gene is specified (e.g. MT893619/MT895696), the space between them is identified as missing data (?)",
         formatter_class=argparse.RawTextHelpFormatter,
         epilog="""\
-Example:  python GB2MSA.py --input_file input.csv --output_prefix myoutput --delimiter , --write_names T --log T --orphan_threshold 10
+Example:  python GB2MSA.py --input_file input.csv --output_prefix myoutput --delimiter , --write_names T --log T --orphan_threshold 10 --min_overlap 10
 """)
-
 
     parser.add_argument("-i", "--input_file", type=str, required=True, help="Path to CSV/TSV file with GenBank accession numbers.")
     parser.add_argument("-o", "--output_prefix", type=str, required=True, help="Path (including prefix, if desirable) for output FASTA files.")
@@ -115,6 +114,7 @@ Example:  python GB2MSA.py --input_file input.csv --output_prefix myoutput --del
     parser.add_argument("-w", "--write_names", type=str2bool, default=True, required=False, help="Write sequence names in a separate file, which can be used as input data in POY/PhyG to select taxon sample (default: True).")
     parser.add_argument("-l", "--log", type=str2bool, default=True, required=False, help="If set, write wall and CPU time to a log file (default: True).")
     parser.add_argument("-ot", "--orphan_threshold", type=int, default=10,  required=False, help="Threshold to clean orphan nucleotides (default: 10).")
+    parser.add_argument("-mo", "--min_overlap", type=int, default=10, required=False, help="Minimum overlap length to merge multi-amplicons (default: 10).")
 
     args = parser.parse_args()
 
@@ -124,7 +124,8 @@ Example:  python GB2MSA.py --input_file input.csv --output_prefix myoutput --del
         delimiter=args.delimiter,
         write_names=args.write_names,
         log=args.log,
-        orphan_threshold=args.orphan_threshold)
+        orphan_threshold=args.orphan_threshold,
+        min_overlap=args.min_overlap)
 
 if __name__ == "__main__":
     main()
