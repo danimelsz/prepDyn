@@ -44,7 +44,7 @@ conda install conda-forge::termcolor
 Finally, clone the **prepDyn** repository using the command:
 
 ```
-git clone https://github.com/dnakamuraz/PrepDyn.git
+git clone https://github.com/dnakamuraz/prepDyn.git
 ```
 
 ### Docker
@@ -61,36 +61,42 @@ You can verify the installation with:
 docker --version
 ```
 
-Then build the image from the root of this repository:
+Pull the published image from GitHub Container Registry (GHCR):
 
 ```bash
-docker build -t prepdyn .
+docker pull ghcr.io/dnakamuraz/prepdyn:v0.3.0
 ```
 
 To see the help message of the main script:
 
 ```bash
-docker run --rm prepdyn
+docker run --rm ghcr.io/dnakamuraz/prepdyn:v0.3.0
 ```
 
 To run **prepDyn** on files from your current directory, mount that directory into the container:
 
 ```bash
-docker run --rm -v "$(pwd)":/work -w /work prepdyn --help
+docker run --rm -v "$(pwd)":/work -w /work ghcr.io/dnakamuraz/prepdyn:v0.3.0 --help
 ```
 
 You can also call the other scripts directly:
 
 ```bash
-docker run --rm prepdyn GB2MSA --help
-docker run --rm prepdyn addSeq --help
-docker run --rm prepdyn UP2AP --help
+docker run --rm ghcr.io/dnakamuraz/prepdyn:v0.3.0 GB2MSA --help
+docker run --rm ghcr.io/dnakamuraz/prepdyn:v0.3.0 addSeq --help
+docker run --rm ghcr.io/dnakamuraz/prepdyn:v0.3.0 UP2AP --help
 ```
 
-After the image is published to GitHub Container Registry (GHCR), users can pull it directly with:
+If you want the newest published image instead of a fixed release, use:
 
 ```bash
-docker pull ghcr.io/danimelsz/prepdyn:latest
+docker pull ghcr.io/dnakamuraz/prepdyn:latest
+```
+
+If you prefer to build the image locally from this repository, run:
+
+```bash
+docker build -t prepdyn .
 ```
 
 ## Usage
