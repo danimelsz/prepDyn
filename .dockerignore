@@ -1,0 +1,14 @@
+.git
+.DS_Store
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.ipynb_checkpoints/
+jupyter/
+figures/
+tables/
+test_data/
+src/__pycache__/
+src/build/
+src/dist/

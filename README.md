@@ -47,6 +47,52 @@ Finally, clone the **prepDyn** repository using the command:
 git clone https://github.com/dnakamuraz/PrepDyn.git
 ```
 
+### Docker
+
+You can also run **prepDyn** with Docker instead of installing Python and MAFFT manually.
+
+First, install Docker:
+- On Windows or macOS, install **Docker Desktop**.
+- On Linux, install **Docker Engine** and make sure the `docker` command is available in your terminal.
+
+You can verify the installation with:
+
+```bash
+docker --version
+```
+
+Then build the image from the root of this repository:
+
+```bash
+docker build -t prepdyn .
+```
+
+To see the help message of the main script:
+
+```bash
+docker run --rm prepdyn
+```
+
+To run **prepDyn** on files from your current directory, mount that directory into the container:
+
+```bash
+docker run --rm -v "$(pwd)":/work -w /work prepdyn --help
+```
+
+You can also call the other scripts directly:
+
+```bash
+docker run --rm prepdyn GB2MSA --help
+docker run --rm prepdyn addSeq --help
+docker run --rm prepdyn UP2AP --help
+```
+
+After the image is published to GitHub Container Registry (GHCR), users can pull it directly with:
+
+```bash
+docker pull ghcr.io/danimelsz/prepdyn:latest
+```
+
 ## Usage
 
 <img src="figures/fig4_workflow.jpg" align="center" width="1200">

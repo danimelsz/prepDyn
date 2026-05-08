@@ -1,21 +1,39 @@
-from setuptools import setup, find_packages
+from pathlib import Path
+
+from setuptools import setup
+
+
+README = Path(__file__).with_name("README.md").read_text(encoding="utf-8")
+
 
 setup(
     name="prepdyn",
     version="0.1.0",
-    packages=find_packages(where="src"),
+    description="Preprocessing toolkit for dynamic homology datasets.",
+    long_description=README,
+    long_description_content_type="text/markdown",
+    py_modules=[
+        "GB2MSA",
+        "UP2AP",
+        "addSeq",
+        "prepDyn",
+        "prepDyn_auxiliary",
+    ],
     package_dir={"": "src"},
     python_requires=">=3.8",
+    include_package_data=False,
     install_requires=[
         "biopython",
-        # add other dependencies
+        "matplotlib",
+        "numpy",
+        "termcolor",
     ],
     entry_points={
         "console_scripts": [
-            "GB2MSA=src.GB2MSA:main",
-            "addSeq=src.addSeq:main",
-            "prepDyn=src.prepDyn:main",
+            "GB2MSA=GB2MSA:main",
+            "UP2AP=UP2AP:main",
+            "addSeq=addSeq:main",
+            "prepDyn=prepDyn:main",
         ],
     },
 )
-
