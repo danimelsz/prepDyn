@@ -124,6 +124,15 @@ def str2bool(v):
         return False
     else:
         raise argparse.ArgumentTypeError('Boolean value expected.')
+
+def parse_mismatch_rate(value):
+    try:
+        rate = float(value)
+    except ValueError:
+        raise argparse.ArgumentTypeError("multi_amplicon_mismatch_rate must be a number between 0 and 1.")
+    if not 0 <= rate <= 1:
+        raise argparse.ArgumentTypeError("multi_amplicon_mismatch_rate must be between 0 and 1.")
+    return rate
     
 ########
 # MAIN #
@@ -149,13 +158,16 @@ Examples:
 """)
     # Parsing
     parser.add_argument("-i", "--input_file", help="Path to input alignment file or directory containing multiple files. Ignored if GB_input is provided.", default=None)
-    parser.add_argument("-gb", "--GB_input", help="Path to a dataframe containing GenBank accession numbers (CSV/TSV). If provided, sequences will be downloaded from GenBank and aligned using MAFFT before preprocessing. Ignored if input_file is provided.", default=None)
+    parser.add_argument("-gb", "--GB_input", help="Path to a dataframe containing GenBank accession numbers (CSV/TSV). If provided, sequences will be downloaded from GenBank and aligned using MAFFT before preprocessing. Cells may contain one accession or multiple slash-delimited accessions for the same locus. Ignored if input_file is provided.", default=None)
     parser.add_argument("-if", "--input_format", help="Input file format. Options: 'fasta' (default), 'clustal', 'phylip', or any format accepted by Biopython.", default="fasta")
     parser.add_argument("-o", "--output_file", help="Path (including prefix) for output file(s)", default=None)
     parser.add_argument("-of", "--output_format", help="Output format [default: fasta]", default="fasta")
     parser.add_argument("-l", "--log", default=True, type=str2bool, help="Write time log")
     parser.add_argument("-msa", "--MSA", default=False, type=str2bool, help="Perform a MSA. Only use it if the sequences specified in input_file are unaligned. Ignore if GB_input is used.")
     parser.add_argument("-s", "--sequence_names", default=True, type=str2bool, help="Write sequence names. Useful to manage taxon sampling in POY/PhyG.")
+    parser.add_argument("-mo", "--multi_amplicon_min_overlap", type=int, default=10, help="Minimum overlap length to merge multi-amplicons when downloading from GenBank (default: 10).")
+    parser.add_argument("-mr", "--multi_amplicon_mismatch_rate", type=parse_mismatch_rate, default=0.05, help="Maximum mismatch rate allowed when merging overlapping multi-amplicons from GenBank (default: 0.05).")
+    parser.add_argument("-maa", "--multi_amplicon_action", type=str, default="trim", choices=["trim", "consensus"], help="How to handle overlapping multi-amplicons from GenBank: 'trim' (default) removes one overlapping copy; 'consensus' replaces the overlap with IUPAC consensus nucleotides.")
 
     # Trimming
     parser.add_argument("-om", "--orphan_method", help="Method to trim orphan nucleotides. Options: 'none' (default), 'percentile' (define threshold via percentile), 'integer' (define threshold via integer), 'adaptive' (iteratively automates threshold safely).", choices=["integer", "percentile", "adaptive"], default=None)
@@ -163,7 +175,6 @@ Examples:
     parser.add_argument("-oa", "--orphan_action", type=str, help="Action for orphan nucleotides. 'trim' (default) removes them. 'push' moves them adjacent to the next block iteratively.", choices=["trim", "push"], default="trim")
     parser.add_argument("-op", "--percentile", type=float, help="Percentile of gap lengths to define the orphan threshold if orphan_method='percentile' (default: 25).", default=25.0)
     parser.add_argument("-di", "--del_inv", default=True, type=str2bool, help="Trim invariant terminal columns (default: True)")
-    parser.add_argument("-mo", "--min_overlap", type=int, default=10, help="Minimum overlap length to merge multi-amplicons when downloading from GenBank (default: 10).", default=10)
 
     # Missing data
     parser.add_argument("-g2q", "--internal_method", help="Method to handle internal missing data: 'manual', 'semi', or 'none' (default)", default=None)
@@ -205,7 +216,9 @@ Examples:
             orphan_action=args.orphan_action,
             percentile=args.percentile,
             del_inv=args.del_inv,
-            min_overlap=args.min_overlap,
+            multi_amplicon_min_overlap=args.multi_amplicon_min_overlap,
+            multi_amplicon_mismatch_rate=args.multi_amplicon_mismatch_rate,
+            multi_amplicon_action=args.multi_amplicon_action,
             # Missing data parameters
             n2question=args.n2question,
             internal_method=args.internal_method,

@@ -101,7 +101,7 @@ Finding the lowest-cost tree from unaligned sequences is NP-hard, so empirical a
 </details>
 
 <details>
-<summary>Can prepDyn be used for phylogenetic programs other than POY/PhyG?</summary>
+<summary>In addition to POY/PhyG, can prepDyn be used to preprocess input data for other phylogenetic programs?</summary>
 
 Yes. If partitioning is skipped, **prepDyn** can still preprocess DNA sequences for other phylogenetic programs. The Step 3 is particularly useful to identify missing data and avoid downstream problems in software that treat gaps as a fifth character-state (e.g., TNT).
 
@@ -111,6 +111,13 @@ Yes. If partitioning is skipped, **prepDyn** can still preprocess DNA sequences 
 <summary>My sequences are too long and POY/PhyG is unable to start phylogenetic analyses. What should I do?</summary>
 
 Dynamic homology implemented in **POY/PhyG** is NP-hard. If sequences are too long, use the parameter `partitioning_max_size`, so that sequences are initially split into equal-length partitions of size X before applying the partitioning methods (balanced, conservative, equal, maximum) in each resulting chunk.
+
+</details>
+
+<details>
+<summary>How to specify missing data and multi-amplicons in the input CSV file?</summary>
+
+In many cases, sequences are available for a few genes but not others. In this case, missing data should be indicated with the string "NA" in the CSV cell. Moreover, there are a few cases where researchers sequence the same gene from the same specimen and thus two or more GenBank accession numbers are available. These multi-amplicons can partially or fully share overlapping sequences. prepDyn allows overlapping regions from one of the sequences to be deleted or compute the consensus sequence.
 
 </details>
 

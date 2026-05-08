@@ -236,57 +236,123 @@ def remove_leading_underscores(file_path):
         return new_file_path
     
 # Function 5. Merge overlapping sequences
-def merge_overlapping_sequences(seq_list, min_overlap=10, mismatch_rate=0.05):
+IUPAC_TO_BASES = {
+    "A": {"A"},
+    "C": {"C"},
+    "G": {"G"},
+    "T": {"T"},
+    #"U": {"T"},
+    "R": {"A", "G"},
+    "Y": {"C", "T"},
+    "S": {"G", "C"},
+    "W": {"A", "T"},
+    "K": {"G", "T"},
+    "M": {"A", "C"},
+    "B": {"C", "G", "T"},
+    "D": {"A", "G", "T"},
+    "H": {"A", "C", "T"},
+    "V": {"A", "C", "G"},
+    "N": {"A", "C", "G", "T"},
+}
+
+BASES_TO_IUPAC = {
+    frozenset(bases): code for code, bases in IUPAC_TO_BASES.items() if code != "U"
+}
+
+def _iupac_consensus_char(base1, base2):
+    bases1 = IUPAC_TO_BASES.get(base1.upper(), {base1.upper()})
+    bases2 = IUPAC_TO_BASES.get(base2.upper(), {base2.upper()})
+    consensus_bases = frozenset(bases1 | bases2)
+    return BASES_TO_IUPAC.get(consensus_bases, "N")
+
+def _build_overlap_consensus(seq_left, seq_right):
+    return "".join(_iupac_consensus_char(left, right) for left, right in zip(seq_left, seq_right))
+
+def merge_overlapping_sequences(seq_list, multi_amplicon_min_overlap=10, multi_amplicon_mismatch_rate=0.05, multi_amplicon_action="trim", labels=None):
     """
     Tries to merge a list of sequences by identifying overlaps.
     If some sequences don't overlap, they remain separate.
-    Returns a list of merged (and unmerged) sequences, along with a log of operations.
+    Returns merged sequences, structured merge events, and the final amplicon groups.
     """
     merge_log = []
     if not seq_list:
-        return [], merge_log
-        
+        return [], merge_log, []
+    if multi_amplicon_action not in {"trim", "consensus"}:
+        raise ValueError("multi_amplicon_action must be either 'trim' or 'consensus'.")
+
+    if labels is None:
+        labels = [f"amplicon_{idx + 1}" for idx in range(len(seq_list))]
+    if len(labels) != len(seq_list):
+        raise ValueError("labels and seq_list must have the same length.")
+
     # Operate on upper case to ensure case-insensitive matching
-    seq_list_upper = [s.upper() for s in seq_list]
+    fragments = [
+        {"seq": seq.upper(), "labels": [label]}
+        for seq, label in zip(seq_list, labels)
+    ]
         
     merged_any = True
     while merged_any:
         merged_any = False
-        for i in range(len(seq_list_upper)):
-            for j in range(i + 1, len(seq_list_upper)):
-                seq1 = seq_list_upper[i]
-                seq2 = seq_list_upper[j]
+        for i in range(len(fragments)):
+            for j in range(i + 1, len(fragments)):
+                fragment1 = fragments[i]
+                fragment2 = fragments[j]
+                seq1 = fragment1["seq"]
+                seq2 = fragment2["seq"]
                 
                 # 1. Check containment first
                 if seq1 in seq2:
-                    merge_log.append(f"Amplicon of {len(seq1)}bp was fully contained in {len(seq2)}bp amplicon (merged).")
-                    seq_list_upper.pop(i)
+                    merge_log.append({
+                        "type": "containment",
+                        "classification": "overlapping",
+                        "removed_labels": fragment1["labels"][:],
+                        "kept_labels": fragment2["labels"][:],
+                        "deleted_string": seq1,
+                        "deleted_length": len(seq1)
+                    })
+                    fragments[j]["labels"].extend(fragment1["labels"])
+                    fragments.pop(i)
                     merged_any = True
                     break
                 if seq2 in seq1:
-                    merge_log.append(f"Amplicon of {len(seq2)}bp was fully contained in {len(seq1)}bp amplicon (merged).")
-                    seq_list_upper.pop(j)
+                    merge_log.append({
+                        "type": "containment",
+                        "classification": "overlapping",
+                        "removed_labels": fragment2["labels"][:],
+                        "kept_labels": fragment1["labels"][:],
+                        "deleted_string": seq2,
+                        "deleted_length": len(seq2)
+                    })
+                    fragments[i]["labels"].extend(fragment2["labels"])
+                    fragments.pop(j)
                     merged_any = True
                     break
                     
                 # 2. Check overlap: seq1 suffix with seq2 prefix
                 overlap_len = 0
                 best_merged = None
+                deleted_string = ""
+                mismatch_count = 0
+                merge_direction = None
                 
                 len1, len2 = len(seq1), len(seq2)
                 max_k = min(len1, len2)
                 
                 # Check seq1 suffix matching seq2 prefix
-                for k in range(max_k, min_overlap - 1, -1):
+                for k in range(max_k, multi_amplicon_min_overlap - 1, -1):
                     s1_suffix = seq1[-k:]
                     s2_prefix = seq2[:k]
                     
                     if s1_suffix == s2_prefix:
                         overlap_len = k
                         best_merged = seq1 + seq2[k:]
+                        deleted_string = seq2[:k]
+                        mismatch_count = 0
+                        merge_direction = "seq1_suffix_seq2_prefix"
                         break
                         
-                    max_mismatches = max(2, int(mismatch_rate * k))
+                    max_mismatches = max(2, int(multi_amplicon_mismatch_rate * k))
                     mismatches = 0
                     for a, b in zip(s1_suffix, s2_prefix):
                         if a != b:
@@ -296,20 +362,26 @@ def merge_overlapping_sequences(seq_list, min_overlap=10, mismatch_rate=0.05):
                     if mismatches <= max_mismatches:
                         overlap_len = k
                         best_merged = seq1 + seq2[k:]
+                        deleted_string = seq2[:k]
+                        mismatch_count = mismatches
+                        merge_direction = "seq1_suffix_seq2_prefix"
                         break
                         
                 # Check seq2 suffix matching seq1 prefix
                 if not best_merged:
-                    for k in range(max_k, min_overlap - 1, -1):
+                    for k in range(max_k, multi_amplicon_min_overlap - 1, -1):
                         s2_suffix = seq2[-k:]
                         s1_prefix = seq1[:k]
                         
                         if s2_suffix == s1_prefix:
                             overlap_len = k
                             best_merged = seq2 + seq1[k:]
+                            deleted_string = seq1[:k]
+                            mismatch_count = 0
+                            merge_direction = "seq2_suffix_seq1_prefix"
                             break
                             
-                        max_mismatches = max(2, int(mismatch_rate * k))
+                        max_mismatches = max(2, int(multi_amplicon_mismatch_rate * k))
                         mismatches = 0
                         for a, b in zip(s2_suffix, s1_prefix):
                             if a != b:
@@ -319,25 +391,111 @@ def merge_overlapping_sequences(seq_list, min_overlap=10, mismatch_rate=0.05):
                         if mismatches <= max_mismatches:
                             overlap_len = k
                             best_merged = seq2 + seq1[k:]
+                            deleted_string = seq1[:k]
+                            mismatch_count = mismatches
+                            merge_direction = "seq2_suffix_seq1_prefix"
                             break
                         
                 if best_merged:
-                    merge_log.append(f"Merged {len1}bp and {len2}bp amplicons with an overlap of {overlap_len}bp.")
-                    # Replace seq1 and seq2 with best_merged
-                    seq_list_upper.pop(j)
-                    seq_list_upper[i] = best_merged
+                    overlap_seq_left = seq1[-overlap_len:] if merge_direction == "seq1_suffix_seq2_prefix" else seq2[-overlap_len:]
+                    overlap_seq_right = seq2[:overlap_len] if merge_direction == "seq1_suffix_seq2_prefix" else seq1[:overlap_len]
+                    consensus_string = _build_overlap_consensus(overlap_seq_left, overlap_seq_right)
+                    if multi_amplicon_action == "consensus":
+                        if merge_direction == "seq1_suffix_seq2_prefix":
+                            best_merged = seq1[:-overlap_len] + consensus_string + seq2[overlap_len:]
+                        else:
+                            best_merged = seq2[:-overlap_len] + consensus_string + seq1[overlap_len:]
+
+                    merge_log.append({
+                        "type": "overlap",
+                        "classification": "overlapping",
+                        "left_labels": fragment1["labels"][:],
+                        "right_labels": fragment2["labels"][:],
+                        "overlap_length": overlap_len,
+                        "action": multi_amplicon_action,
+                        "deleted_string": deleted_string,
+                        "deleted_length": len(deleted_string),
+                        "consensus_string": consensus_string,
+                        "mismatch_count": mismatch_count,
+                        "direction": merge_direction
+                    })
+                    fragments.pop(j)
+                    if merge_direction == "seq1_suffix_seq2_prefix":
+                        fragments[i] = {
+                            "seq": best_merged,
+                            "labels": fragment1["labels"] + fragment2["labels"]
+                        }
+                    else:
+                        fragments[i] = {
+                            "seq": best_merged,
+                            "labels": fragment2["labels"] + fragment1["labels"]
+                        }
                     merged_any = True
                     break
             if merged_any:
                 break
                 
-    return seq_list_upper, merge_log
+    return [fragment["seq"] for fragment in fragments], merge_log, [fragment["labels"][:] for fragment in fragments]
+
+def _format_deleted_string_for_log(sequence, max_len=120):
+    if len(sequence) <= max_len:
+        return sequence
+    flank_len = max((max_len - 3) // 2, 1)
+    return f"{sequence[:flank_len]}...{sequence[-flank_len:]}"
+
+def _format_amplicon_groups_for_log(groups):
+    return "; ".join("/".join(group) for group in groups)
+
+def _build_multi_amplicon_log(requested_accessions, fetched_accessions, failed_accessions, merge_events, final_groups):
+    lines = [f"Multi-amplicon input accessions: {'/'.join(requested_accessions)}"]
+
+    if failed_accessions:
+        lines.append(f"Accessions not fetched: {'/'.join(failed_accessions)}")
+
+    if len(fetched_accessions) <= 1:
+        lines.append("Overlap classification: not enough fetched amplicons to evaluate overlap.")
+        return lines
+
+    if merge_events:
+        for event in merge_events:
+            if event["type"] == "containment":
+                removed = "/".join(event["removed_labels"])
+                kept = "/".join(event["kept_labels"])
+                deleted = _format_deleted_string_for_log(event["deleted_string"])
+                lines.append(
+                    f"Overlapping: {removed} was fully contained in {kept}; deleted string ({event['deleted_length']} bp): {deleted}"
+                )
+            else:
+                left = "/".join(event["left_labels"])
+                right = "/".join(event["right_labels"])
+                mismatch_note = ""
+                if event["mismatch_count"] > 0:
+                    mismatch_note = f", mismatches allowed/used: {event['mismatch_count']}"
+                if event.get("action") == "consensus":
+                    consensus = _format_deleted_string_for_log(event["consensus_string"])
+                    lines.append(
+                        f"Overlapping: {left} with {right}; overlap {event['overlap_length']} bp{mismatch_note}; consensus string ({event['overlap_length']} bp): {consensus}"
+                    )
+                else:
+                    deleted = _format_deleted_string_for_log(event["deleted_string"])
+                    lines.append(
+                        f"Overlapping: {left} with {right}; overlap {event['overlap_length']} bp{mismatch_note}; deleted string ({event['deleted_length']} bp): {deleted}"
+                    )
+    else:
+        lines.append("Overlapping: none detected among fetched multi-amplicon sequences.")
+
+    if len(final_groups) > 1:
+        lines.append(f"Non-overlapping groups retained as separate fragments: {_format_amplicon_groups_for_log(final_groups)}")
+    else:
+        lines.append("Non-overlapping groups retained as separate fragments: none")
+
+    return lines
 
 ############################################   
 # MAIN FUNCTIONS: STEP 1. DATA COLLECTION  #
 ############################################
 
-def GB2MSA_1(input_file, output_prefix, delimiter=',', write_names=True, min_overlap=10):
+def GB2MSA_1(input_file, output_prefix, delimiter=',', write_names=True, multi_amplicon_min_overlap=10, multi_amplicon_mismatch_rate=0.05, multi_amplicon_action="trim"):
     """
     Downloads GenBank sequences based on accession numbers in a CSV/TSV file and aligns them by gene using 
     MAFFT. If two fragments of the same locus are concatenated with no overlap between them, the space
@@ -360,8 +518,15 @@ def GB2MSA_1(input_file, output_prefix, delimiter=',', write_names=True, min_ove
     write_names : bool, optional (default=True)
         If True, writes a TXT file listing all sequence names (from the first column).
 
-    min_overlap : int, optional (default=10)
+    multi_amplicon_min_overlap : int, optional (default=10)
         Minimum overlap length to merge multi-amplicons downlaoded from GenBank.
+
+    multi_amplicon_mismatch_rate : float, optional (default=0.05)
+        Maximum mismatch rate allowed when merging overlapping multi-amplicons.
+
+    multi_amplicon_action : str, optional (default="trim")
+        If "trim", remove one copy of overlapping regions when merging multi-amplicons.
+        If "consensus", keep the overlap and replace it with an IUPAC consensus string.
 
     Returns:
     --------
@@ -412,6 +577,8 @@ def GB2MSA_1(input_file, output_prefix, delimiter=',', write_names=True, min_ove
                 # Split accession numbers by '/' and filter out invalid entries
                 accessions = [acc for acc in cell.split('/') if acc.upper() != "NA" and acc != "" and acc != "-"]
                 sequences = []  # To hold the sequences retrieved from GenBank
+                fetched_accessions = []
+                failed_accessions = []
 
                 # Fetch each sequence from GenBank
                 for acc in accessions:
@@ -420,14 +587,28 @@ def GB2MSA_1(input_file, output_prefix, delimiter=',', write_names=True, min_ove
                         seq_record = SeqIO.read(handle, "fasta")
                         handle.close()
                         sequences.append(str(seq_record.seq))  # Store the sequence string
+                        fetched_accessions.append(acc)
                     except Exception as e:
+                        failed_accessions.append(acc)
                         print(f"Error fetching {acc}: {e}")
 
                 # Merge overlapping sequences if possible
-                sequences, m_log = merge_overlapping_sequences(sequences, min_overlap=min_overlap)
+                sequences, m_log, final_groups = merge_overlapping_sequences(
+                    sequences,
+                    multi_amplicon_min_overlap=multi_amplicon_min_overlap,
+                    multi_amplicon_mismatch_rate=multi_amplicon_mismatch_rate,
+                    multi_amplicon_action=multi_amplicon_action,
+                    labels=fetched_accessions
+                )
 
-                if m_log:
-                    gb1_logs[gene_name][seq_name] = m_log
+                if len(accessions) > 1:
+                    gb1_logs[gene_name][seq_name] = {
+                        "requested_accessions": accessions,
+                        "fetched_accessions": fetched_accessions,
+                        "failed_accessions": failed_accessions,
+                        "merge_events": m_log,
+                        "final_groups": final_groups
+                    }
 
                 # Combine multiple sequences with 'W' delimiters to mark junctions (to be handled later)
                 combined_seq = "WWWWWWWWWWWWWWW".join(sequences)
@@ -2076,7 +2257,11 @@ def GB2MSA(input_file,
            write_names=False, 
            log=False, 
            orphan_threshold=10,
-           min_overlap=10):
+           multi_amplicon_min_overlap=10,
+           multi_amplicon_mismatch_rate=0.05,
+           multi_amplicon_action="trim",
+           return_gene_logs=False,
+           write_run_log=True):
     """
     Complete GenBank-to-MSA pipeline:
     1. Downloads sequences from GenBank and aligns them by gene using MAFFT.
@@ -2091,7 +2276,15 @@ def GB2MSA(input_file,
     start_cpu = time.process_time()
 
     # Step 1: Generate aligned FASTA files
-    aligned_files, gb1_logs, gene_names = GB2MSA_1(input_file, output_prefix, delimiter=delimiter, write_names=write_names, min_overlap=min_overlap)
+    aligned_files, gb1_logs, gene_names = GB2MSA_1(
+        input_file,
+        output_prefix,
+        delimiter=delimiter,
+        write_names=write_names,
+        multi_amplicon_min_overlap=multi_amplicon_min_overlap,
+        multi_amplicon_mismatch_rate=multi_amplicon_mismatch_rate,
+        multi_amplicon_action=multi_amplicon_action
+    )
 
     # Step 2: Clean each aligned FASTA file
     cleaned_files = []
@@ -2135,7 +2328,7 @@ def GB2MSA(input_file,
             os.remove(aligned_file)
 
     # Step 7: Log timing and amplicons if requested
-    if log:
+    if log and write_run_log:
         end_wall = time.time()
         end_cpu = time.process_time()
         wall_time = end_wall - start_wall
@@ -2158,8 +2351,18 @@ def GB2MSA(input_file,
                     for m in re.finditer(r'\?+', seq):
                         q_blocks.append((m.start() + 1, m.end()))  # 1-based index logging
                     
-                    # Fetch merge/join log events pre-alignment
-                    events = gene_logs.get(record.id, [])
+                    metadata = gene_logs.get(record.id)
+                    events = []
+                    if metadata:
+                        events.extend(
+                            _build_multi_amplicon_log(
+                                metadata["requested_accessions"],
+                                metadata["fetched_accessions"],
+                                metadata["failed_accessions"],
+                                metadata["merge_events"],
+                                metadata["final_groups"]
+                            )
+                        )
                     # Append alignment coordinate logs
                     for start, end in q_blocks:
                         events.append(f"Internal missing data (?) at alignment columns {start}-{end} (length: {end-start+1})")
@@ -2172,6 +2375,8 @@ def GB2MSA(input_file,
             lf.write(f"\nWall clock time: {wall_time:.2f} seconds\n")
             lf.write(f"CPU time: {cpu_time:.2f} seconds\n\n")
 
+    if return_gene_logs:
+        return cleaned_files, gb1_logs, gene_names
     return cleaned_files
 
 def addSeq(
@@ -2610,7 +2815,9 @@ def prepDyn(input_file=None,
             orphan_action="trim",
             percentile=25,
             del_inv=True,
-            min_overlap=10,
+            multi_amplicon_min_overlap=10,
+            multi_amplicon_mismatch_rate=0.05,
+            multi_amplicon_action="trim",
             # Missing data parameters
             internal_method=None,
             internal_column_ranges=None,
@@ -2651,7 +2858,11 @@ def prepDyn(input_file=None,
                              'push' moves them adjacent to the next block iteratively.
         percentile (float): Used with orphan_method = 'percentile' to define trimming threshold.
         del_inv (bool): Whether to trim invariant terminal columns. Default is True.
-        min_overlap (int): Minimum overlap length to merge multi-amplicons when downloading from GenBank. Default is 10.
+        multi_amplicon_min_overlap (int): Minimum overlap length to merge multi-amplicons when downloading from GenBank. Default is 10.
+        multi_amplicon_mismatch_rate (float): Maximum mismatch rate allowed when merging overlapping multi-amplicons from GenBank. Default is 0.05.
+        multi_amplicon_action (str): How to handle overlapping multi-amplicons. "trim" (default)
+                                     removes one overlapping copy; "consensus" replaces the overlap
+                                     with IUPAC consensus nucleotides.
         internal_method (str): Defines how to identify internal missing data. Automatic identificaton
                                of missing data is made if GB_input is provided. Otherwise, naive
                                options to identify internal missing data are:
@@ -2719,7 +2930,9 @@ def prepDyn(input_file=None,
         "orphan_action": orphan_action,
         "percentile": percentile,
         "del_inv": del_inv,
-        "min_overlap": min_overlap,
+        "multi_amplicon_min_overlap": multi_amplicon_min_overlap,
+        "multi_amplicon_mismatch_rate": multi_amplicon_mismatch_rate,
+        "multi_amplicon_action": multi_amplicon_action,
         "internal_method": internal_method,
         "internal_column_ranges": internal_column_ranges,
         "internal_leaves": internal_leaves,
@@ -2758,12 +2971,15 @@ def prepDyn(input_file=None,
                            _all_sequence_ids, # This is the shared set
                            _is_top_level_call, # Flag for controlling final write
                            _original_cmd_line, # Parameter to pass the original command
+                           _gb_gene_log_metadata,
                            orphan_method,
                            orphan_threshold,
                            orphan_action,
                            percentile,
                            del_inv,
-                           min_overlap,
+                           multi_amplicon_min_overlap,
+                           multi_amplicon_mismatch_rate,
+                           multi_amplicon_action,
                            internal_method,
                            internal_column_ranges,
                            internal_leaves,
@@ -2794,9 +3010,19 @@ def prepDyn(input_file=None,
             print("Running GB2MSA on GenBank input...")
             
             gb_output_prefix_for_gb2msa = output_file 
-            cleaned_files = GB2MSA(GB_input, output_prefix=gb_output_prefix_for_gb2msa, write_names=False, log=log, min_overlap=min_overlap)
+            cleaned_files, gb1_logs, gene_names = GB2MSA(
+                GB_input,
+                output_prefix=gb_output_prefix_for_gb2msa,
+                write_names=False,
+                log=log,
+                multi_amplicon_min_overlap=multi_amplicon_min_overlap,
+                multi_amplicon_mismatch_rate=multi_amplicon_mismatch_rate,
+                multi_amplicon_action=multi_amplicon_action,
+                return_gene_logs=True,
+                write_run_log=False
+            )
             
-            for file_path_from_gb2msa in cleaned_files:
+            for gene_name, file_path_from_gb2msa in zip(gene_names, cleaned_files):
                 file_basename_no_ext = os.path.splitext(os.path.basename(file_path_from_gb2msa))[0]
                 gene_name_part = file_basename_no_ext.replace("_aligned", "").replace("_GB2MSA", "")
                 base_from_original_output = os.path.basename(original_output_file_arg) if original_output_file_arg else ""
@@ -2813,11 +3039,12 @@ def prepDyn(input_file=None,
                 _all_sequence_ids.update(alignment_dict.keys())
                 _prepDyn_recursive(input_val=alignment_dict,
                                 GB_input=None, input_format="dict", MSA=MSA,
-                                orphan_method=orphan_method, orphan_threshold=orphan_threshold, orphan_action=orphan_action, percentile=percentile, del_inv=del_inv, min_overlap=min_overlap,
+                                orphan_method=orphan_method, orphan_threshold=orphan_threshold, orphan_action=orphan_action, percentile=percentile, del_inv=del_inv, multi_amplicon_min_overlap=multi_amplicon_min_overlap, multi_amplicon_mismatch_rate=multi_amplicon_mismatch_rate, multi_amplicon_action=multi_amplicon_action,
                                 internal_method=internal_method, internal_column_ranges=internal_column_ranges, internal_leaves=internal_leaves, internal_threshold=internal_threshold,
                                 n2question=n2question, partitioning_method=partitioning_method, partitioning_round=partitioning_round, partitioning_conservative=partitioning_conservative, partitioning_max_size=partitioning_max_size, partitioning_size=partitioning_size,
                                 output_format=output_format, log=log, sequence_names=False,
                                 _all_sequence_ids=_all_sequence_ids, _is_top_level_call=False, _original_cmd_line=_original_cmd_line,
+                                _gb_gene_log_metadata=gb1_logs.get(gene_name, {}),
                                 output_file=specific_output_prefix_for_recursion)
             return
 
@@ -2870,11 +3097,12 @@ def prepDyn(input_file=None,
                         _all_sequence_ids.update(current_file_alignment.keys())
                         _prepDyn_recursive(input_val=current_file_alignment,
                                 GB_input=None, input_format="dict", MSA=False,
-                                orphan_method=orphan_method, orphan_threshold=orphan_threshold, orphan_action=orphan_action, percentile=percentile, del_inv=del_inv, min_overlap=min_overlap,
+                                orphan_method=orphan_method, orphan_threshold=orphan_threshold, orphan_action=orphan_action, percentile=percentile, del_inv=del_inv, multi_amplicon_min_overlap=multi_amplicon_min_overlap, multi_amplicon_mismatch_rate=multi_amplicon_mismatch_rate, multi_amplicon_action=multi_amplicon_action,
                                 internal_method=internal_method, internal_column_ranges=internal_column_ranges, internal_leaves=internal_leaves, internal_threshold=internal_threshold,
                                 n2question=n2question, partitioning_method=partitioning_method, partitioning_round=partitioning_round, partitioning_conservative=partitioning_conservative, partitioning_max_size=partitioning_max_size, partitioning_size=partitioning_size,
                                 output_format=output_format, log=log, sequence_names=False,
                                 _all_sequence_ids=_all_sequence_ids, _is_top_level_call=False, _original_cmd_line=_original_cmd_line,
+                                _gb_gene_log_metadata=None,
                                 output_file=specific_output_prefix)
             if not processed_any_file:
                 print(f"WARNING: No files with extension '.{input_format}' found in directory: {input_val}")
@@ -3065,6 +3293,24 @@ def prepDyn(input_file=None,
                 log_file.write(f"Total no. IUPAC N: {total_ns_before}\n\n")
                 ### END FIX PART 2 ###
 
+                if _gb_gene_log_metadata:
+                    multi_amplicon_lines = []
+                    for seq_name, metadata in _gb_gene_log_metadata.items():
+                        events = _build_multi_amplicon_log(
+                            metadata["requested_accessions"],
+                            metadata["fetched_accessions"],
+                            metadata["failed_accessions"],
+                            metadata["merge_events"],
+                            metadata["final_groups"]
+                        )
+                        if events:
+                            multi_amplicon_lines.append(f"{seq_name}:")
+                            multi_amplicon_lines.extend([f"  - {event}" for event in events])
+                    if multi_amplicon_lines:
+                        log_file.write("--- Step 1: Multi-amplicon processing from GenBank ---\n")
+                        log_file.write("\n".join(multi_amplicon_lines))
+                        log_file.write("\n\n")
+
                 if del_inv:
                     log_file.write("--- Step 2: Trimming (invariant columns) ---\n")
                     log_file.write(f"{removed_cols}\n\n")
@@ -3205,12 +3451,15 @@ def prepDyn(input_file=None,
                                                    _all_sequence_ids=_all_sequence_ids_shared,
                                                    _is_top_level_call=True,
                                                    _original_cmd_line=original_cmd_line,
+                                                   _gb_gene_log_metadata=None,
                                                    orphan_method=orphan_method,
                                                    orphan_threshold=orphan_threshold,
                                                    orphan_action=orphan_action,
                                                    percentile=percentile,
                                                    del_inv=del_inv,
-                                                   min_overlap=min_overlap,
+                                                   multi_amplicon_min_overlap=multi_amplicon_min_overlap,
+                                                   multi_amplicon_mismatch_rate=multi_amplicon_mismatch_rate,
+                                                   multi_amplicon_action=multi_amplicon_action,
                                                    internal_method=internal_method,
                                                    internal_column_ranges=internal_column_ranges,
                                                    internal_leaves=internal_leaves,

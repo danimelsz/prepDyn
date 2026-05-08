@@ -94,6 +94,15 @@ def str2bool(v):
         return False
     else:
         raise argparse.ArgumentTypeError('Boolean value expected.')
+
+def parse_mismatch_rate(value):
+    try:
+        rate = float(value)
+    except ValueError:
+        raise argparse.ArgumentTypeError("multi_amplicon_mismatch_rate must be a number between 0 and 1.")
+    if not 0 <= rate <= 1:
+        raise argparse.ArgumentTypeError("multi_amplicon_mismatch_rate must be between 0 and 1.")
+    return rate
  
 
 ########
@@ -102,19 +111,21 @@ def str2bool(v):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="GB2MSA downloads sequences from GenBank and performs multiple sequence alignment using MAFFT. If >1 non-overlapping fragments of the same gene is specified (e.g. MT893619/MT895696), the space between them is identified as missing data (?)",
+        description="GB2MSA downloads sequences from GenBank and performs multiple sequence alignment using MAFFT. If two or more fragments of the same gene are specified in one CSV cell using slash delimiters (e.g. MT893619/MT895696/MT895697), overlapping fragments are merged and the space between non-overlapping fragments is identified as missing data (?).",
         formatter_class=argparse.RawTextHelpFormatter,
         epilog="""\
-Example:  python GB2MSA.py --input_file input.csv --output_prefix myoutput --delimiter , --write_names T --log T --orphan_threshold 10 --min_overlap 10
+Example:  python GB2MSA.py --input_file input.csv --output_prefix myoutput --delimiter , --write_names T --log T --orphan_threshold 10 --multi_amplicon_min_overlap 10 --multi_amplicon_mismatch_rate 0.05 --multi_amplicon_action trim
 """)
 
-    parser.add_argument("-i", "--input_file", type=str, required=True, help="Path to CSV/TSV file with GenBank accession numbers.")
+    parser.add_argument("-i", "--input_file", type=str, required=True, help="Path to CSV/TSV file with GenBank accession numbers. Each cell may contain one accession or multiple slash-delimited accessions for the same locus.")
     parser.add_argument("-o", "--output_prefix", type=str, required=True, help="Path (including prefix, if desirable) for output FASTA files.")
     parser.add_argument("-d", "--delimiter", default=",", type=str, required=False, help="Delimiter used in the input file (default: ',').")
     parser.add_argument("-w", "--write_names", type=str2bool, default=True, required=False, help="Write sequence names in a separate file, which can be used as input data in POY/PhyG to select taxon sample (default: True).")
     parser.add_argument("-l", "--log", type=str2bool, default=True, required=False, help="If set, write wall and CPU time to a log file (default: True).")
     parser.add_argument("-ot", "--orphan_threshold", type=int, default=10,  required=False, help="Threshold to clean orphan nucleotides (default: 10).")
-    parser.add_argument("-mo", "--min_overlap", type=int, default=10, required=False, help="Minimum overlap length to merge multi-amplicons (default: 10).")
+    parser.add_argument("-mo", "--multi_amplicon_min_overlap", type=int, default=10, required=False, help="Minimum overlap length to merge multi-amplicons (default: 10).")
+    parser.add_argument("-mr", "--multi_amplicon_mismatch_rate", type=parse_mismatch_rate, default=0.05, required=False, help="Maximum mismatch rate allowed when merging overlapping multi-amplicons (default: 0.05).")
+    parser.add_argument("-maa", "--multi_amplicon_action", type=str, default="trim", choices=["trim", "consensus"], required=False, help="How to handle overlapping multi-amplicons: 'trim' (default) removes one overlapping copy; 'consensus' replaces the overlap with IUPAC consensus nucleotides.")
 
     args = parser.parse_args()
 
@@ -125,7 +136,9 @@ Example:  python GB2MSA.py --input_file input.csv --output_prefix myoutput --del
         write_names=args.write_names,
         log=args.log,
         orphan_threshold=args.orphan_threshold,
-        min_overlap=args.min_overlap)
+        multi_amplicon_min_overlap=args.multi_amplicon_min_overlap,
+        multi_amplicon_mismatch_rate=args.multi_amplicon_mismatch_rate,
+        multi_amplicon_action=args.multi_amplicon_action)
 
 if __name__ == "__main__":
     main()

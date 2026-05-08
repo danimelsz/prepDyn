@@ -1,0 +1,8 @@
+--- Overall prepDyn Execution Summary ---
+Command used:
+prepDyn(GB_input='test_data/tutorial/ex_multi_amplicon/nonoverlap.csv', input_format='fasta', MSA=False, output_file='test_data/tutorial/ex_multi_amplicon/multiamplicon', output_format='fasta', log=True, sequence_names=True, orphan_threshold=10, orphan_action='trim', percentile=25.0, del_inv=True, min_overlap=10, mismatch_rate=0.05, internal_column_ranges='all', internal_leaves='all', partitioning_method='conservative', partitioning_round=0, partitioning_conservative='midpoint')
+
+Total Wall-clock time: 32.42351103 seconds
+Total CPU time: 0.73547500 seconds
+
+Note: Individual gene/alignment logs provide detailed information.
