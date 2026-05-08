@@ -13,6 +13,8 @@ Copyright (C) Daniel Y. M. Nakamura 2025
 
 ## Installation
 
+### Manual installation
+
 The two dependencies that should be installed beforehand by the user are:
 - Python v. 3.10.9 (or newer), including *argparse*, *ast*, *csv*, *importlib*, *re*, *StringIO*, *subprocess*, *sys*, *tempfile*, and *time*, which are usually part of recent versions of Python.
 - MAFFT v. 7.5.2 (or newer), installed in $PATH as 'mafft'.
