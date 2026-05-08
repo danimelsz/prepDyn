@@ -51,19 +51,7 @@ git clone https://github.com/dnakamuraz/prepDyn.git
 
 ### Docker
 
-You can also run **prepDyn** with Docker instead of installing Python and MAFFT manually.
-
-First, install Docker:
-- On Windows or macOS, install **Docker Desktop**.
-- On Linux, install **Docker Engine** and make sure the `docker` command is available in your terminal.
-
-You can verify the installation with:
-
-```bash
-docker --version
-```
-
-Pull the published image from GitHub Container Registry (GHCR):
+You can also run **prepDyn** with Docker. First, pull the published image from GitHub Container Registry (GHCR):
 
 ```bash
 docker pull ghcr.io/dnakamuraz/prepdyn:v0.3.0
@@ -72,7 +60,7 @@ docker pull ghcr.io/dnakamuraz/prepdyn:v0.3.0
 To see the help message of the main script:
 
 ```bash
-docker run --rm ghcr.io/dnakamuraz/prepdyn:v0.3.0
+docker pull ghcr.io/dnakamuraz/prepdyn:latest
 ```
 
 To run **prepDyn** on files from your current directory, mount that directory into the container:
@@ -87,18 +75,6 @@ You can also call the other scripts directly:
 docker run --rm ghcr.io/dnakamuraz/prepdyn:v0.3.0 GB2MSA --help
 docker run --rm ghcr.io/dnakamuraz/prepdyn:v0.3.0 addSeq --help
 docker run --rm ghcr.io/dnakamuraz/prepdyn:v0.3.0 UP2AP --help
-```
-
-If you want the newest published image instead of a fixed release, use:
-
-```bash
-docker pull ghcr.io/dnakamuraz/prepdyn:latest
-```
-
-If you prefer to build the image locally from this repository, run:
-
-```bash
-docker build -t prepdyn .
 ```
 
 ## Usage
