@@ -1,27 +1,67 @@
-List of parameters in prepDyn. Parameters can be either specified with long or short options.
+List of parameters in prepDyn scripts. Parameters can be either specified with long or short options.
 
-| **Parameter**                       | **Type**              | **Default**  | **Description**                                                                   |
-| ----------------------------------- | --------------------- | ------------ | --------------------------------------------------------------------------------- |
-| `input_file` or `i`                 | `str`                 | –            | Path to an alignment file or directory of alignments.                             |
-| `GB_input` or `gb`                  | `str`                 | –            | Path to a CSV/TSV of GenBank accessions. Overrides `input_file`.                  |
-| `input_format` or `if`              | `str`                 | `"fasta"`    | Format of input file(s) (e.g., `fasta`, `clustal`).                          |
-| `MSA` or `msa`                      | `bool`                | `False`      | If `True`, perform multiple sequence alignment on unaligned input sequences.      |
-| `output_file` or `o`                | `str`                 | –            | Custom prefix for output files.                                                   |
-| `output_format` or `of`             | `str`                 | `"fasta"`    | Format for the output alignment.                                                  |
-| `log` or `l`                        | `bool`                | `False`      | Write a detailed log file.                                                        |
-| `sequence_names` or `s`             | `bool`                | `True`       | Write a file with all unique sequence names.                                      |
-| `orphan_method` or `om`             | `str`                 | `None`       | Method to trim orphan nucleotides: `percentile`, `integer`, `adaptive` or `None`.                 |
-| `orphan_action` or `oa`             | `str`                 | `None`       | Action for orphan nucleotides. 'trim' (default) removes them. 'push' moves them adjacent to the next block iteratively.                 |
-| `orphan_threshold` or `ot`          | `int`                 | `10`         | Manual length threshold for `orphan_method integer`.                               |
-| `percentile` or `op`                | `float`               | `25`         | Percentile for `orphan_method percentile`.                                            |
-| `del_inv` or `di`                   | `bool`                | `True`       | Trim invariant columns from alignment ends.                                       |
-| `internal_method` or `g2q`          | `str`                 | `None`       | Method to replace internal gaps with `?`: `manual`, `semi`, or `None`.        |
-| `internal_column_ranges` or `g2q_c` | `list`                | –            | Column ranges (e.g., `[[10, 20]]`) for `manual` method.                         |
-| `internal_leaves` or `g2q_l`        | `str` or `list`       | `"all"`      | Sequences to apply internal gap replacement to.                                   |
-| `internal_threshold` or `g2q_t`     | `int`                 | –            | Gap length threshold for `semi` method.                                         |
-| `n2question` or  `n2q`              | `str`, `list`, `None` | `None`       | Replace ambiguous `N` with `?`. Options: `all`, list of names, or `None`.     |
-| `partitioning_method` or `pm`       | `str`                 | `"conservative"` | Method to insert `#` markers: `balanced`, `conservative`, `equal`, `max`, or `None`.  |
-| `partitioning_round` or `pr`        | `int`                 | `0`          | Number of rounds/selected blocks for relevant partitioning methods.  |
-| `partitioning_conservative` or `pc` | `str`                 | `"midpoint"` | Placement mode when `partitioning_method='conservative'`: `'midpoint'` inserts one `#` at the midpoint of each selected invariant block, and `'flank'` inserts `#` columns around each selected invariant block. |
-| `partitioning_max_size` or `pms`    | `int`                 | –            | Initial maximum partition size. If specified, the alignment is first split into equal-length partitions of this size, and the selected partitioning method is then applied independently within each resulting partition. |
-| `partitioning_size` or `ps`         | `int`                 | –            | Partition size for `partitioning_method='equal'`.                                 |
+## `prepDyn.py`
+
+| **Parameter**                       | **Type**              | **Default**      | **Description** |
+| ----------------------------------- | --------------------- | ---------------- | --------------- |
+| `input_file` or `i`                 | `str`                 | –                | Path to an input alignment file or a directory containing multiple files. Required unless `GB_input` is provided. |
+| `GB_input` or `gb`                  | `str`                 | –                | Path to a CSV/TSV dataframe with GenBank accession numbers. Required unless `input_file` is provided. |
+| `input_format` or `if`              | `str`                 | `"fasta"`        | Input format, such as `fasta`, `clustal`, `phylip`, or any format accepted by Biopython. |
+| `output_file` or `o`                | `str`                 | –                | Path or prefix for output file(s). |
+| `output_format` or `of`             | `str`                 | `"fasta"`        | Output alignment format. |
+| `log` or `l`                        | `bool`                | `True`           | Write a time log. |
+| `MSA` or `msa`                      | `bool`                | `False`          | Perform a multiple sequence alignment when `input_file` contains unaligned sequences. Ignored if `GB_input` is used. |
+| `sequence_names` or `s`             | `bool`                | `True`           | Write a file with sequence names. Useful for taxon sampling in POY/PhyG. |
+| `multi_amplicon_min_overlap` or `mo`| `int`                 | `10`             | Minimum overlap length required to merge overlapping multi-amplicons downloaded from GenBank. |
+| `multi_amplicon_mismatch_rate` or `mr` | `float`            | `0.05`           | Maximum mismatch rate allowed when merging overlapping multi-amplicons from GenBank. |
+| `multi_amplicon_action` or `maa`    | `str`                 | `"trim"`         | How to handle overlapping multi-amplicons from GenBank: `trim` removes one overlapping copy, and `consensus` replaces the overlap with IUPAC consensus nucleotides. |
+| `orphan_method` or `om`             | `str`                 | `None`           | Method to handle orphan nucleotides: `integer`, `percentile`, `adaptive`, or `None`. |
+| `orphan_threshold` or `ot`          | `int`                 | `10`             | Threshold used when `orphan_method='integer'`, and also the maximum dynamic threshold when `orphan_method='adaptive'`. |
+| `orphan_action` or `oa`             | `str`                 | `"trim"`         | Action for orphan nucleotides: `trim` removes them, and `push` moves them adjacent to the next block iteratively. |
+| `percentile` or `op`                | `float`               | `25.0`           | Percentile used to define the orphan threshold when `orphan_method='percentile'`. |
+| `del_inv` or `di`                   | `bool`                | `True`           | Trim invariant terminal columns. |
+| `internal_method` or `g2q`          | `str`                 | `None`           | Method to handle internal missing data: `manual`, `semi`, or `None`. |
+| `internal_column_ranges` or `g2q_c` | `list` or `str`       | `"all"`          | Column ranges in Python list format for `internal_method='manual'`. |
+| `internal_leaves` or `g2q_l`        | `str` or `list`       | `"all"`          | Sequence names to which internal missing-data handling is applied. Use `all` or a comma-separated list. |
+| `internal_threshold` or `g2q_t`     | `int`                 | `None`           | Gap-length threshold used when `internal_method='semi'`. |
+| `n2question` or `n2q`               | `str` or `list`       | `None`           | Replace IUPAC `N` with `?`. Use `all`, a single leaf name, a list of leaf names, or `None`. |
+| `partitioning_method` or `pm`       | `str`                 | `"conservative"` | Partitioning method: `balanced`, `conservative`, `equal`, `max`, or `None`. |
+| `partitioning_round` or `pr`        | `int`                 | `0`              | Round or number of selected blocks used by `balanced`, `conservative`, or `equal` partitioning. |
+| `partitioning_conservative` or `pc` | `str`                 | `"midpoint"`     | Placement mode for conservative partitioning: `midpoint` inserts one `#` in the middle of each selected invariant block, and `flank` inserts `#` columns around each selected invariant block. |
+| `partitioning_max_size` or `pms`    | `int`                 | `None`           | Initial maximum partition size. If set, the alignment is first split into equal-length partitions of this size, and the selected partitioning method is then applied independently within each partition. |
+| `partitioning_size` or `ps`         | `int`                 | `None`           | Size of equal-length partitions when `partitioning_method='equal'`. |
+
+## `GB2MSA.py`
+
+| **Parameter**                            | **Type** | **Default** | **Description** |
+| ---------------------------------------- | -------- | ----------- | --------------- |
+| `input_file` or `i`                      | `str`    | –           | Path to a CSV/TSV file with GenBank accession numbers. Each cell may contain one accession or multiple slash-delimited accessions for the same locus. |
+| `output_prefix` or `o`                   | `str`    | –           | Path or prefix for output FASTA files. |
+| `delimiter` or `d`                       | `str`    | `","`       | Delimiter used in the input file. |
+| `write_names` or `w`                     | `bool`   | `True`      | Write sequence names in a separate file for taxon sampling in POY/PhyG. |
+| `log` or `l`                             | `bool`   | `True`      | Write wall and CPU time to a log file. |
+| `orphan_threshold` or `ot`               | `int`    | `10`        | Threshold used to clean orphan nucleotides. |
+| `multi_amplicon_min_overlap` or `mo`     | `int`    | `10`        | Minimum overlap length required to merge overlapping multi-amplicons. |
+| `multi_amplicon_mismatch_rate` or `mr`   | `float`  | `0.05`      | Maximum mismatch rate allowed when merging overlapping multi-amplicons. |
+| `multi_amplicon_action` or `maa`         | `str`    | `"trim"`    | How to handle overlapping multi-amplicons: `trim` removes one overlapping copy, and `consensus` replaces the overlap with IUPAC consensus nucleotides. |
+
+## `UP2AP.py`
+
+| **Parameter**            | **Type** | **Default** | **Description** |
+| ------------------------ | -------- | ----------- | --------------- |
+| `input_fasta` or `i`     | `str`    | –           | Path to FASTA input containing unaligned sequences with pound signs. |
+| `output_fasta` or `o`    | `str`    | –           | Path to FASTA output of aligned sequences containing pound signs. |
+| `keep_unusual` or `k`    | `bool`   | `False`     | Keep pound signs (`#`) and question marks (`?`) in the output. |
+
+## `addSeq.py`
+
+| **Parameter**         | **Type**        | **Default** | **Description** |
+| --------------------- | --------------- | ----------- | --------------- |
+| `alignment` or `a`    | `str`           | –           | Path to FASTA input alignment. If question marks and pound signs are present, they are maintained. |
+| `new_seqs` or `n`     | `str`           | –           | Path to FASTA input sequence(s) to be added to the alignment. |
+| `output` or `o`       | `str`           | –           | Path to the output file with the new sequences aligned to the core alignment. |
+| `write_names` or `w`  | `bool`          | `False`     | Write sequence names in a separate file for taxon sampling in POY/PhyG. |
+| `orphan_threshold` or `ot` | `int`      | `0`         | Threshold used to detect and remove orphan DNA blocks. |
+| `n2question` or `n2q` | `str` or `list` | `None`      | Replace IUPAC `N` with `?`. Use `all`, a single added leaf name, a list of added leaf names, or `None`. |
+| `gaps2question` or `g2q` | `int` or `None` | `None`   | Replace contiguous gap blocks larger than this threshold with `?`. Only applied to added sequences. |
+| `log` or `l`          | `bool`          | `True`      | Write a log tracking operations and runtime. |
