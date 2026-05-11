@@ -54,27 +54,21 @@ git clone https://github.com/dnakamuraz/prepDyn.git
 You can also run **prepDyn** with Docker. First, pull the published image from GitHub Container Registry (GHCR):
 
 ```bash
-docker pull ghcr.io/dnakamuraz/prepdyn:v0.3.0
-```
-
-To see the help message of the main script:
-
-```bash
 docker pull ghcr.io/dnakamuraz/prepdyn:latest
 ```
 
 To run **prepDyn** on files from your current directory, mount that directory into the container:
 
 ```bash
-docker run --rm -v "$(pwd)":/work -w /work ghcr.io/dnakamuraz/prepdyn:v0.3.0 --help
+docker run --rm -v "$(pwd)":/work -w /work ghcr.io/dnakamuraz/prepdyn:latest -h
 ```
 
 You can also call the other scripts directly:
 
 ```bash
-docker run --rm ghcr.io/dnakamuraz/prepdyn:v0.3.0 GB2MSA --help
-docker run --rm ghcr.io/dnakamuraz/prepdyn:v0.3.0 addSeq --help
-docker run --rm ghcr.io/dnakamuraz/prepdyn:v0.3.0 UP2AP --help
+docker run --rm ghcr.io/dnakamuraz/prepdyn:latest GB2MSA -h
+docker run --rm ghcr.io/dnakamuraz/prepdyn:latest addSeq -h
+docker run --rm ghcr.io/dnakamuraz/prepdyn:latest UP2AP -h
 ```
 
 ## Usage
