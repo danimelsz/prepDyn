@@ -102,7 +102,7 @@ If you use **prepDyn** in your research, cite this repository.
 
 ## Tutorial
 
-Check the [**Wiki**](https://github.com/dnakamuraz/prepDyn/wiki/Tutorials) page for a tutorial. If you have questions, send a message using **GitHub issues**. Do not move the scripts from the directory *src*, otherwise the modular structure will break.
+Check the [**Wiki**](https://github.com/dnakamuraz/prepDyn/wiki/Tutorials) page for tutorials using the Python scripts or the Docker image. If you have questions, send a message using **GitHub issues**.
 
 ## FAQ
 
