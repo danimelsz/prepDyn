@@ -118,7 +118,7 @@ Example:  python GB2MSA.py --input_file input.csv --output_prefix myoutput --del
 """)
 
     parser.add_argument("-i", "--input_file", type=str, required=True, help="Path to CSV/TSV file with GenBank accession numbers. Each cell may contain one accession or multiple slash-delimited accessions for the same locus.")
-    parser.add_argument("-o", "--output_prefix", type=str, required=True, help="Path (including prefix, if desirable) for output FASTA files.")
+    parser.add_argument("-o", "--output_prefix", type=str, required=False, default=None, help="Path (including prefix, if desirable) for output FASTA files.")
     parser.add_argument("-d", "--delimiter", default=",", type=str, required=False, help="Delimiter used in the input file (default: ',').")
     parser.add_argument("-w", "--write_names", type=str2bool, default=True, required=False, help="Write sequence names in a separate file, which can be used as input data in POY/PhyG to select taxon sample (default: True).")
     parser.add_argument("-l", "--log", type=str2bool, default=True, required=False, help="If set, write wall and CPU time to a log file (default: True).")
@@ -128,6 +128,9 @@ Example:  python GB2MSA.py --input_file input.csv --output_prefix myoutput --del
     parser.add_argument("-maa", "--multi_amplicon_action", type=str, default="trim", choices=["trim", "consensus"], required=False, help="How to handle overlapping multi-amplicons: 'trim' (default) removes one overlapping copy; 'consensus' replaces the overlap with IUPAC consensus nucleotides.")
 
     args = parser.parse_args()
+    if not args.output_prefix:
+        print("output_file was not provided.")
+        return
 
     GB2MSA(
         input_file=args.input_file,

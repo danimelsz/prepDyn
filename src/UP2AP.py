@@ -96,10 +96,13 @@ Examples: python UP2AP.py -i aln.fas -o aln_updated.fas -k
 """)
     
     parser.add_argument("-i", "--input_fasta", type=str, required=True, help="Path to FASTA input of unaligned sequences containing pound signs.", default=None)
-    parser.add_argument("-o", "--output_fasta", type=str, required=True, help="Path to FASTA output of aligned sequences containing pound signs.", default=None)     
+    parser.add_argument("-o", "--output_fasta", type=str, required=False, help="Path to FASTA output of aligned sequences containing pound signs.", default=None)     
     parser.add_argument("-k", "--keep_unusual", action="store_true", help="Keep the pound signs (#) and question marks (?) in the output. Default is False.")
 
     args = parser.parse_args()
+    if not args.output_fasta:
+        print("output_file was not provided.")
+        return
 
     UP2AP(
         input_fasta=args.input_fasta, 

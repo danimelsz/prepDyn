@@ -200,6 +200,9 @@ Examples:
     # Error messages
     if not args.input_file and not args.GB_input:
         parser.error("You must provide either --input_file or --GB_input.")
+    if not args.output_file:
+        print("output_file was not provided.")
+        return
 
     # prepDyn
     prepDyn(input_file=args.input_file,
