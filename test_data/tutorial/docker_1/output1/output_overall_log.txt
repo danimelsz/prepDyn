@@ -2,7 +2,7 @@
 Command used:
 prepDyn(GB_input='/prepdyn/data.csv', input_format='fasta', MSA=False, output_file='/prepdyn/output1/output', output_format='fasta', log=True, sequence_names=True, orphan_method='integer', orphan_threshold=10, orphan_action='trim', percentile=25.0, del_inv=True, multi_amplicon_min_overlap=10, multi_amplicon_mismatch_rate=0.05, multi_amplicon_action='trim', internal_column_ranges='all', internal_leaves='all', partitioning_method='None', partitioning_round=0, partitioning_conservative='midpoint')
 
-Total Wall-clock time: 28.33870864 seconds
-Total CPU time: 1.53826368 seconds
+Total Wall-clock time: 32.47811890 seconds
+Total CPU time: 0.91290074 seconds
 
 Note: Individual gene/alignment logs provide detailed information.
