@@ -545,8 +545,8 @@ def GB2MSA_1(input_file, output_prefix, delimiter=',', write_names=True, multi_a
     # Replace spaces in sequence names with underscores
     sequence_names = [row[0].replace(" ", "_") for row in rows[1:]]
     
-    # Extract gene names from the header row (excluding first column)
-    gene_names = rows[0][1:]
+    # Extract gene names from the header row (excluding first column) and strip whitespace
+    gene_names = [name.strip() for name in rows[0][1:]]
     
     # Extract gene accession data for each sequence (excluding first column)
     gene_columns = [row[1:] for row in rows[1:]]

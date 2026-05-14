@@ -57,18 +57,10 @@ You can also run **prepDyn** with Docker. First, pull the published image from G
 docker pull ghcr.io/dnakamuraz/prepdyn:latest
 ```
 
-To run **prepDyn** on files from your current directory, mount that directory into the container:
+Check the images available in Docker:
 
 ```bash
-docker run --rm -v "$(pwd)":/work -w /work ghcr.io/dnakamuraz/prepdyn:latest -h
-```
-
-You can also call the other scripts directly:
-
-```bash
-docker run --rm ghcr.io/dnakamuraz/prepdyn:latest GB2MSA -h
-docker run --rm ghcr.io/dnakamuraz/prepdyn:latest addSeq -h
-docker run --rm ghcr.io/dnakamuraz/prepdyn:latest UP2AP -h
+docker images
 ```
 
 ## Usage
