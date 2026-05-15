@@ -3155,76 +3155,102 @@ def prepDyn(input_file=None,
     round_batch_active = len(expanded_rounds) > 1
 
     if method_batch_active or round_batch_active:
+        batch_start_wall_time = time.time()
+        batch_start_cpu_time = time.process_time()
+        batch_root_output = output_file or "output"
+        batch_root_dir = os.path.normpath(batch_root_output)
+        batch_root_name = os.path.basename(batch_root_dir) or "output"
+        batch_runtime_log_path = os.path.join(batch_root_output, f"{batch_root_name}_overall_log.txt")
         batch_input_file = input_file
         batch_csv_input = CSV_input
         batch_input_format = input_format
         batch_msa = MSA
+        cache_root = None
 
-        if CSV_input is not None:
-            cache_root = os.path.join(output_file or "output", "_gb2msa_cache")
-            cache_output_prefix = os.path.join(cache_root, "cache")
-            cache_alignment_dir = os.path.join(cache_root, "alignments")
-            os.makedirs(cache_alignment_dir, exist_ok=True)
+        try:
+            if CSV_input is not None:
+                cache_root = os.path.join(batch_root_output, "_gb2msa_cache")
+                cache_output_prefix = os.path.join(cache_root, "cache")
+                cache_alignment_dir = os.path.join(cache_root, "alignments")
+                os.makedirs(cache_alignment_dir, exist_ok=True)
 
-            print("Running GB2MSA on GenBank input once for batch partitioning...")
-            cleaned_files, _, gene_names = GB2MSA(
-                CSV_input,
-                output_prefix=cache_output_prefix,
-                write_names=False,
-                log=False,
-                multi_amplicon_min_overlap=multi_amplicon_min_overlap,
-                multi_amplicon_mismatch_rate=multi_amplicon_mismatch_rate,
-                multi_amplicon_action=multi_amplicon_action,
-                return_gene_logs=True,
-                write_run_log=False
-            )
-
-            for gene_name, cleaned_file in zip(gene_names, cleaned_files):
-                cached_alignment_path = os.path.join(cache_alignment_dir, f"{gene_name}.fasta")
-                shutil.copy2(cleaned_file, cached_alignment_path)
-
-            batch_input_file = cache_alignment_dir
-            batch_csv_input = None
-            batch_input_format = "fasta"
-            batch_msa = False
-
-        for method_name in expanded_methods:
-            for round_value in expanded_rounds:
-                batch_output_prefix = _build_batch_output_prefix(
-                    output_file,
-                    method_name,
-                    round_value,
-                    method_batch_active=method_batch_active,
-                    round_batch_active=round_batch_active
-                )
-                prepDyn(
-                    input_file=batch_input_file,
-                    CSV_input=batch_csv_input,
-                    input_format=batch_input_format,
-                    MSA=batch_msa,
-                    output_file=batch_output_prefix,
-                    output_format=output_format,
-                    log=log,
-                    sequence_names=sequence_names,
-                    orphan_method=orphan_method,
-                    orphan_threshold=orphan_threshold,
-                    orphan_action=orphan_action,
-                    percentile=percentile,
-                    del_inv=del_inv,
+                print("Running GB2MSA on GenBank input once for batch partitioning...")
+                cleaned_files, _, gene_names = GB2MSA(
+                    CSV_input,
+                    output_prefix=cache_output_prefix,
+                    write_names=False,
+                    log=False,
                     multi_amplicon_min_overlap=multi_amplicon_min_overlap,
                     multi_amplicon_mismatch_rate=multi_amplicon_mismatch_rate,
                     multi_amplicon_action=multi_amplicon_action,
-                    internal_method=internal_method,
-                    internal_column_ranges=internal_column_ranges,
-                    internal_leaves=internal_leaves,
-                    internal_threshold=internal_threshold,
-                    n2question=n2question,
-                    partitioning_round=round_value,
-                    partitioning_method=method_name,
-                    partitioning_conservative=partitioning_conservative,
-                    partitioning_max_size=partitioning_max_size,
-                    partitioning_size=partitioning_size
+                    return_gene_logs=True,
+                    write_run_log=False
                 )
+
+                for gene_name, cleaned_file in zip(gene_names, cleaned_files):
+                    cached_alignment_path = os.path.join(cache_alignment_dir, f"{gene_name}.fasta")
+                    shutil.copy2(cleaned_file, cached_alignment_path)
+
+                batch_input_file = cache_alignment_dir
+                batch_csv_input = None
+                batch_input_format = "fasta"
+                batch_msa = False
+
+            for method_name in expanded_methods:
+                for round_value in expanded_rounds:
+                    batch_output_prefix = _build_batch_output_prefix(
+                        output_file,
+                        method_name,
+                        round_value,
+                        method_batch_active=method_batch_active,
+                        round_batch_active=round_batch_active
+                    )
+                    prepDyn(
+                        input_file=batch_input_file,
+                        CSV_input=batch_csv_input,
+                        input_format=batch_input_format,
+                        MSA=batch_msa,
+                        output_file=batch_output_prefix,
+                        output_format=output_format,
+                        log=log,
+                        sequence_names=sequence_names,
+                        orphan_method=orphan_method,
+                        orphan_threshold=orphan_threshold,
+                        orphan_action=orphan_action,
+                        percentile=percentile,
+                        del_inv=del_inv,
+                        multi_amplicon_min_overlap=multi_amplicon_min_overlap,
+                        multi_amplicon_mismatch_rate=multi_amplicon_mismatch_rate,
+                        multi_amplicon_action=multi_amplicon_action,
+                        internal_method=internal_method,
+                        internal_column_ranges=internal_column_ranges,
+                        internal_leaves=internal_leaves,
+                        internal_threshold=internal_threshold,
+                        n2question=n2question,
+                        partitioning_round=round_value,
+                        partitioning_method=method_name,
+                        partitioning_conservative=partitioning_conservative,
+                        partitioning_max_size=partitioning_max_size,
+                        partitioning_size=partitioning_size
+                    )
+        finally:
+            if cache_root and os.path.isdir(cache_root):
+                shutil.rmtree(cache_root, ignore_errors=True)
+
+        if log:
+            batch_end_wall_time = time.time()
+            batch_end_cpu_time = time.process_time()
+            total_batch_wall_time = batch_end_wall_time - batch_start_wall_time
+            total_batch_cpu_time = batch_end_cpu_time - batch_start_cpu_time
+            os.makedirs(os.path.dirname(batch_runtime_log_path) or ".", exist_ok=True)
+            with open(batch_runtime_log_path, "w") as batch_log_file:
+                batch_log_file.write("--- Overall prepDyn Batch Execution Summary ---\n")
+                batch_log_file.write(f"Command used:\n{original_cmd_line}\n\n")
+                batch_log_file.write(f"Partitioning methods: {expanded_methods}\n")
+                batch_log_file.write(f"Partitioning rounds: {expanded_rounds}\n\n")
+                batch_log_file.write(f"Total Wall-clock time: {total_batch_wall_time:.8f} seconds\n")
+                batch_log_file.write(f"Total CPU time: {total_batch_cpu_time:.8f} seconds\n")
+                batch_log_file.write("\nNote: Individual run logs provide detailed information.\n")
         return None
 
 

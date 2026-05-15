@@ -147,7 +147,7 @@ The best partitioning strategy is dataset-dependent and the user must test it em
 <details>
 <summary>Can I run several partitioning strategies or rounds at once?</summary>
 
-Yes. `partitioning_method` accepts `all`, which runs `conservative`, `balanced`, `max`, and `equal` in separate directories. `partitioning_round` also accepts ranges such as `0-10`, which generate one run per round. For example, `prepDyn.py -pm all -pr 0-2 -o output` creates one directory per method under `output`, and within each method directory creates subdirectories for `round_0`, `round_1`, and `round_2`. If `CSV_input` is used in one of these batch runs, GenBank sequences are downloaded and aligned only once, and all subsequent batch runs reuse the cached aligned FASTA files.
+Yes. `partitioning_method` accepts `all`, which runs `conservative`, `balanced`, `max`, and `equal` in separate directories. `partitioning_round` also accepts ranges such as `0-10`, which generate one run per round. For example, `prepDyn.py -pm all -pr 0-2 -o output` creates one directory per method under `output`, and within each method directory creates subdirectories for `round_0`, `round_1`, and `round_2`. If `CSV_input` is used in one of these batch runs, GenBank sequences are downloaded and aligned only once, and all subsequent batch runs reuse the cached aligned FASTA files. The temporary `_gb2msa_cache` directory is deleted automatically after the batch finishes, and a top-level overall runtime log is written in the root output directory.
 
 </details>
 
