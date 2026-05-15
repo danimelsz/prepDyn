@@ -1,0 +1,5 @@
+[console_scripts]
+GB2MSA = GB2MSA:main
+UP2AP = UP2AP:main
+addSeq = addSeq:main
+prepDyn = prepDyn:main

@@ -21,78 +21,78 @@ library(patchwork)
 
 # Empirical 1 (de Sá)
 # Load consensus
-e1_1_noPrep = ape::read.tree(file = "empirical1_deSa/1_noPreprocessing/v1.4_TNT_strictConsensus.nwk")
-e1_2_noPart = ape::read.tree(file = "empirical1_deSa/2_noPartitioning/v2.4_TNT_strictConsensus.nwk")
-e1_3_max = ape::read.tree(file = "empirical1_deSa/6_max/v6.4_TNT_strictConsensus.nwk")
-e1_4_balanced = ape::read.tree(file = "empirical1_deSa/3_balanced/round1/v3.1.4_TNT_strictConsensus.nwk")
-e1_5_conservative = ape::read.tree(file = "empirical1_deSa/4_conservative/round1/v4.1.4_TNT_strictConsensus.nwk")
-e1_6_equal = ape::read.tree(file = "empirical1_deSa/5_equal/round1/v5.1.4_TNT_strictConsensus.nwk")
+e1_1_noPrep = ape::read.tree(file = "../../../Other/IMPORTANT_empirical_data/empirical1_deSa/1_noPreprocessing/v1.4_TNT_strictConsensus.nwk")
+e1_2_noPart = ape::read.tree(file = "../../../Other/IMPORTANT_empirical_data/empirical1_deSa/2_noPartitioning/v2.4_TNT_strictConsensus.nwk")
+e1_3_max = ape::read.tree(file = "../../../Other/IMPORTANT_empirical_data/empirical1_deSa/3_max/v6.4_TNT_strictConsensus.nwk")
+e1_4_balanced = ape::read.tree(file = "../../../Other/IMPORTANT_empirical_data/empirical1_deSa/4_balanced/round1/v3.1.4_TNT_strictConsensus.nwk")
+e1_5_conservative = ape::read.tree(file = "../../../Other/IMPORTANT_empirical_data/empirical1_deSa/5_conservative/round1/v4.1.4_TNT_strictConsensus.nwk")
+e1_6_equal = ape::read.tree(file = "../../../Other/IMPORTANT_empirical_data/empirical1_deSa/6_equal/round1/v5.1.4_TNT_strictConsensus.nwk")
 # Create a list of consensus trees 1
 e1 = c(e1_1_noPrep, e1_2_noPart, e1_3_max, e1_4_balanced, e1_5_conservative, e1_6_equal)
 # Load MPTs
-mpt1_1_noPrep = ape::read.tree(file = "empirical1_deSa/1_noPreprocessing/v1.3_PHYG_Sa_bestUnique.nwk")
-mpt1_2_noPart = ape::read.tree(file = "empirical1_deSa/2_noPartitioning/v2.3_PHYG_Sa_bestUnique.nwk")
-mpt1_3_max = ape::read.tree(file = "empirical1_deSa/6_max/v6.3_PHYG_Sa_bestUnique.nwk")
-mpt1_4_balanced = ape::read.tree(file = "empirical1_deSa/3_balanced/round1/v3.1.3_PHYG_Sa_bestUnique.nwk")
-mpt1_5_conservative = ape::read.tree(file = "empirical1_deSa/4_conservative/round1/v4.1.3_PHYG_Sa_bestUnique.nwk")
-mpt1_6_equal = ape::read.tree(file = "empirical1_deSa/5_equal/round1/v5.1.3_PHYG_Sa_bestUnique.nwk")
+mpt1_1_noPrep = ape::read.tree(file = "../../../Other/IMPORTANT_empirical_data/empirical1_deSa/1_noPreprocessing/v1.3_PHYG_Sa_bestUnique.nwk")
+mpt1_2_noPart = ape::read.tree(file = "../../../Other/IMPORTANT_empirical_data/empirical1_deSa/2_noPartitioning/v2.3_PHYG_Sa_bestUnique.nwk")
+mpt1_3_max = ape::read.tree(file = "../../../Other/IMPORTANT_empirical_data/empirical1_deSa/3_max/v6.3_PHYG_Sa_bestUnique.nwk")
+mpt1_4_balanced = ape::read.tree(file = "../../../Other/IMPORTANT_empirical_data/empirical1_deSa/4_balanced/round1/v3.1.3_PHYG_Sa_bestUnique.nwk")
+mpt1_5_conservative = ape::read.tree(file = "../../../Other/IMPORTANT_empirical_data/empirical1_deSa/5_conservative/round1/v4.1.3_PHYG_Sa_bestUnique.nwk")
+mpt1_6_equal = ape::read.tree(file = "../../../Other/IMPORTANT_empirical_data/empirical1_deSa/6_equal/round1/v5.1.3_PHYG_Sa_bestUnique.nwk")
 # Create a list of MPTs 1
 mpt1 = c(mpt1_1_noPrep, mpt1_2_noPart, mpt1_3_max, mpt1_4_balanced, mpt1_5_conservative, mpt1_6_equal)
 
 # Empirical 2 (Chiari)
-e2_1_noPrep = ape::read.tree(file = "empirical2_Chiari/1_noPreprocessing/v1.4_TNT_strictConsensus.nwk")
-e2_2_noPart = ape::read.tree(file = "empirical2_Chiari/2_noPartitioning/v2.4_TNT_strictConsensus.nwk")
-e2_3_max = ape::read.tree(file = "empirical2_Chiari/6_max/v6.4_TNT_strictConsensus.nwk")
-e2_4_balanced = ape::read.tree(file = "empirical2_Chiari/3_balanced/round4/v3.4.4_TNT_strictConsensus.nwk")
-e2_5_conservative = ape::read.tree(file = "empirical2_Chiari/4_conservative/round2/v4.2.4_TNT_strictConsensus.nwk")
-e2_6_equal = ape::read.tree(file = "empirical2_Chiari/5_equal/round4/v5.4.4_TNT_strictConsensus.nwk")
+e2_1_noPrep = ape::read.tree(file = "../../../Other/IMPORTANT_empirical_data/empirical2_Chiari/1_noPreprocessing/v1.4_TNT_strictConsensus.nwk")
+e2_2_noPart = ape::read.tree(file = "../../../Other/IMPORTANT_empirical_data/empirical2_Chiari/2_noPartitioning/v2.4_TNT_strictConsensus.nwk")
+e2_3_max = ape::read.tree(file = "../../../Other/IMPORTANT_empirical_data/empirical2_Chiari/3_max/v6.4_TNT_strictConsensus.nwk")
+e2_4_balanced = ape::read.tree(file = "../../../Other/IMPORTANT_empirical_data/empirical2_Chiari/4_balanced/round4/v3.4.4_TNT_strictConsensus.nwk")
+e2_5_conservative = ape::read.tree(file = "../../../Other/IMPORTANT_empirical_data/empirical2_Chiari/5_conservative/round2/v4.2.4_TNT_strictConsensus.nwk")
+e2_6_equal = ape::read.tree(file = "../../../Other/IMPORTANT_empirical_data/empirical2_Chiari/6_equal/round4/v5.4.4_TNT_strictConsensus.nwk")
 # Create a list of consensus trees 2
 e2 = c(e2_1_noPrep, e2_2_noPart, e2_3_max, e2_4_balanced, e2_5_conservative, e2_6_equal)
 # Load MPTs
-mpt2_1_noPrep = ape::read.tree(file = "empirical2_Chiari/1_noPreprocessing/v1.3_PHYG_Chiari_bestUnique.nwk")
-mpt2_2_noPart = ape::read.tree(file = "empirical2_Chiari/2_noPartitioning/v2.3_PHYG_Chiari_bestUnique.nwk")
-mpt2_3_max = ape::read.tree(file = "empirical2_Chiari/6_max/v6.3_PHYG_Chiari_bestUnique.nwk")
-mpt2_4_balanced = ape::read.tree(file = "empirical2_Chiari/3_balanced/round4/v3.4.3_PHYG_Chiari_bestUnique.nwk")
-mpt2_5_conservative = ape::read.tree(file = "empirical2_Chiari/4_conservative/round2/v4.2.3_PHYG_Chiari_bestUnique.nwk")
-mpt2_6_equal = ape::read.tree(file = "empirical2_Chiari/5_equal/round4/v5.4.3_PHYG_Chiari_bestUnique.nwk")
+mpt2_1_noPrep = ape::read.tree(file = "../../../Other/IMPORTANT_empirical_data/empirical2_Chiari/1_noPreprocessing/v1.3_PHYG_Chiari_bestUnique.nwk")
+mpt2_2_noPart = ape::read.tree(file = "../../../Other/IMPORTANT_empirical_data/empirical2_Chiari/2_noPartitioning/v2.3_PHYG_Chiari_bestUnique.nwk")
+mpt2_3_max = ape::read.tree(file = "../../../Other/IMPORTANT_empirical_data/empirical2_Chiari/3_max/v6.3_PHYG_Chiari_bestUnique.nwk")
+mpt2_4_balanced = ape::read.tree(file = "../../../Other/IMPORTANT_empirical_data/empirical2_Chiari/4_balanced/round4/v3.4.3_PHYG_Chiari_bestUnique.nwk")
+mpt2_5_conservative = ape::read.tree(file = "../../../Other/IMPORTANT_empirical_data/empirical2_Chiari/5_conservative/round2/v4.2.3_PHYG_Chiari_bestUnique.nwk")
+mpt2_6_equal = ape::read.tree(file = "../../../Other/IMPORTANT_empirical_data/empirical2_Chiari/6_equal/round4/v5.4.3_PHYG_Chiari_bestUnique.nwk")
 # Create a list of MPTs 2
 mpt2 = c(mpt2_1_noPrep, mpt2_2_noPart, mpt2_3_max, mpt2_4_balanced, mpt2_5_conservative, mpt2_6_equal)
 
 # Empirical 3 (Nakamura)
-e3_1_noPrep = ape::read.tree(file = "empirical3_Nakamura2/1_noPreprocessing/v1.4_TNT_strictConsensus.nwk")
-e3_2_noPart = ape::read.tree(file = "empirical3_Nakamura2/2_noPartitioning/v2.4_TNT_strictConsensus.nwk")
-e3_3_max = ape::read.tree(file = "empirical3_Nakamura2/6_max/v6.4_TNT_strictConsensus.nwk")
-e3_4_balanced = ape::read.tree(file = "empirical3_Nakamura2/3_balanced/round3/v3.3.4_TNT_strictConsensus.nwk")
-e3_5_conservative = ape::read.tree(file = "empirical3_Nakamura2/4_conservative/round2/v4.2.4_TNT_strictConsensus.nwk")
-e3_6_equal = ape::read.tree(file = "empirical3_Nakamura2/5_equal/round5/v5.5.4_TNT_strictConsensus.nwk")
+e3_1_noPrep = ape::read.tree(file = "../../../Other/IMPORTANT_empirical_data/empirical3_Nakamura2/1_noPreprocessing/v1.4_TNT_strictConsensus.nwk")
+e3_2_noPart = ape::read.tree(file = "../../../Other/IMPORTANT_empirical_data/empirical3_Nakamura2/2_noPartitioning/v2.4_TNT_strictConsensus.nwk")
+e3_3_max = ape::read.tree(file = "../../../Other/IMPORTANT_empirical_data/empirical3_Nakamura2/3_max/v6.4_TNT_strictConsensus.nwk")
+e3_4_balanced = ape::read.tree(file = "../../../Other/IMPORTANT_empirical_data/empirical3_Nakamura2/4_balanced/round3/v3.3.4_TNT_strictConsensus.nwk")
+e3_5_conservative = ape::read.tree(file = "../../../Other/IMPORTANT_empirical_data/empirical3_Nakamura2/5_conservative/round2/v4.2.4_TNT_strictConsensus.nwk")
+e3_6_equal = ape::read.tree(file = "../../../Other/IMPORTANT_empirical_data/empirical3_Nakamura2/6_equal/round5/v5.5.4_TNT_strictConsensus.nwk")
 # Create a list of consensus trees 3
 e3 = c(e3_1_noPrep, e3_2_noPart, e3_3_max, e3_4_balanced, e3_5_conservative, e3_6_equal)
 # Load MPTs
-mpt3_1_noPrep = ape::read.tree(file = "empirical3_Nakamura2/1_noPreprocessing/v1.3_PHYG_Nakamura_bestUnique.nwk")
-mpt3_2_noPart = ape::read.tree(file = "empirical3_Nakamura2/2_noPartitioning/v2.3_PHYG_Nakamura_bestUnique.nwk")
-mpt3_3_max = ape::read.tree(file = "empirical3_Nakamura2/6_max/v6.3_PHYG_Nakamura_bestUnique.nwk")
-mpt3_4_balanced = ape::read.tree(file = "empirical3_Nakamura2/3_balanced/round3/v3.3.3_PHYG_Nakamura_bestUnique.nwk")
-mpt3_5_conservative = ape::read.tree(file = "empirical3_Nakamura2/4_conservative/round2/v4.2.3_PHYG_Nakamura_bestUnique.nwk")
-mpt3_6_equal = ape::read.tree(file = "empirical3_Nakamura2/5_equal/round5/v5.5.3_PHYG_Nakamura_bestUnique.nwk")
+mpt3_1_noPrep = ape::read.tree(file = "../../../Other/IMPORTANT_empirical_data/empirical3_Nakamura2/1_noPreprocessing/v1.3_PHYG_Nakamura_bestUnique.nwk")
+mpt3_2_noPart = ape::read.tree(file = "../../../Other/IMPORTANT_empirical_data/empirical3_Nakamura2/2_noPartitioning/v2.3_PHYG_Nakamura_bestUnique.nwk")
+mpt3_3_max = ape::read.tree(file = "../../../Other/IMPORTANT_empirical_data/empirical3_Nakamura2/3_max/v6.3_PHYG_Nakamura_bestUnique.nwk")
+mpt3_4_balanced = ape::read.tree(file = "../../../Other/IMPORTANT_empirical_data/empirical3_Nakamura2/4_balanced/round3/v3.3.3_PHYG_Nakamura_bestUnique.nwk")
+mpt3_5_conservative = ape::read.tree(file = "../../../Other/IMPORTANT_empirical_data/empirical3_Nakamura2/5_conservative/round2/v4.2.3_PHYG_Nakamura_bestUnique.nwk")
+mpt3_6_equal = ape::read.tree(file = "../../../Other/IMPORTANT_empirical_data/empirical3_Nakamura2/6_equal/round5/v5.5.3_PHYG_Nakamura_bestUnique.nwk")
 # Create a list of MPTs 3
 mpt3 = c(mpt3_1_noPrep, mpt3_2_noPart, mpt3_3_max, mpt3_4_balanced, mpt3_5_conservative, mpt3_6_equal)
 
 # Empirical 4 (Domburg)
-e4_1_noPrep = ape::read.tree(file = "empirical4_Domburg/1_noPreprocessing/v1.4_TNT_strictConsensus.nwk")
-e4_2_noPart = ape::read.tree(file = "empirical4_Domburg/2_noPartitioning/v2.4_TNT_strictConsensus.nwk")
-e4_3_max = ape::read.tree(file = "empirical4_Domburg/6_max/v6.4_TNT_strictConsensus.nwk")
-e4_4_balanced = ape::read.tree(file = "empirical4_Domburg/3_balanced/round1/v3.1.4_TNT_strictConsensus.nwk")
-e4_5_conservative = ape::read.tree(file = "empirical4_Domburg/4_conservative/round7/v4.7.4_TNT_strictConsensus.nwk")
-e4_6_equal = ape::read.tree(file = "empirical4_Domburg/5_equal/round4/v5.4.4_TNT_strictConsensus.nwk")
+e4_1_noPrep = ape::read.tree(file = "../../../Other/IMPORTANT_empirical_data/empirical4_Domburg/1_noPreprocessing/v1.4_TNT_strictConsensus.nwk")
+e4_2_noPart = ape::read.tree(file = "../../../Other/IMPORTANT_empirical_data/empirical4_Domburg/2_noPartitioning/v2.4_TNT_strictConsensus.nwk")
+e4_3_max = ape::read.tree(file = "../../../Other/IMPORTANT_empirical_data/empirical4_Domburg/3_max/v6.4_TNT_strictConsensus.nwk")
+e4_4_balanced = ape::read.tree(file = "../../../Other/IMPORTANT_empirical_data/empirical4_Domburg/4_balanced/round1/v3.1.4_TNT_strictConsensus.nwk")
+e4_5_conservative = ape::read.tree(file = "../../../Other/IMPORTANT_empirical_data/empirical4_Domburg/5_conservative/round7/v4.7.4_TNT_strictConsensus.nwk")
+e4_6_equal = ape::read.tree(file = "../../../Other/IMPORTANT_empirical_data/empirical4_Domburg/6_equal/round4/v5.4.4_TNT_strictConsensus.nwk")
 # Create a list of consensus trees 4
 e4 = c(e4_1_noPrep, e4_2_noPart, e4_3_max, e4_4_balanced, e4_5_conservative, e4_6_equal)
 # Load MPTs
-mpt4_1_noPrep = ape::read.tree(file = "empirical4_Domburg/1_noPreprocessing/v1.3_PHYG_Domburg_bestUnique.nwk")
-mpt4_2_noPart = ape::read.tree(file = "empirical4_Domburg/2_noPartitioning/v2.3_PHYG_Domburg_bestUnique.nwk")
-mpt4_3_max = ape::read.tree(file = "empirical4_Domburg/6_max/v6.3_PHYG_Domburg_bestUnique.nwk")
-mpt4_4_balanced = ape::read.tree(file = "empirical4_Domburg/3_balanced/round1/v3.1.3_PHYG_Domburg_bestUnique.nwk")
-mpt4_5_conservative = ape::read.tree(file = "empirical4_Domburg/4_conservative/round7/v4.7.3_PHYG_Domburg_bestUnique.nwk")
-mpt4_6_equal = ape::read.tree(file = "empirical4_Domburg/5_equal/round4/v5.4.3_PHYG_Domburg_bestUnique.nwk")
+mpt4_1_noPrep = ape::read.tree(file = "../../../Other/IMPORTANT_empirical_data/empirical4_Domburg/1_noPreprocessing/v1.3_PHYG_Domburg_bestUnique.nwk")
+mpt4_2_noPart = ape::read.tree(file = "../../../Other/IMPORTANT_empirical_data/empirical4_Domburg/2_noPartitioning/v2.3_PHYG_Domburg_bestUnique.nwk")
+mpt4_3_max = ape::read.tree(file = "../../../Other/IMPORTANT_empirical_data/empirical4_Domburg/3_max/v6.3_PHYG_Domburg_bestUnique.nwk")
+mpt4_4_balanced = ape::read.tree(file = "../../../Other/IMPORTANT_empirical_data/empirical4_Domburg/4_balanced/round1/v3.1.3_PHYG_Domburg_bestUnique.nwk")
+mpt4_5_conservative = ape::read.tree(file = "../../../Other/IMPORTANT_empirical_data/empirical4_Domburg/5_conservative/round7/v4.7.3_PHYG_Domburg_bestUnique.nwk")
+mpt4_6_equal = ape::read.tree(file = "../../../Other/IMPORTANT_empirical_data/empirical4_Domburg/6_equal/round4/v5.4.3_PHYG_Domburg_bestUnique.nwk")
 # Create a list of MPTs 4
 mpt4 = c(mpt4_1_noPrep, mpt4_2_noPart, mpt4_3_max, mpt4_4_balanced, mpt4_5_conservative, mpt4_6_equal)
 
@@ -109,7 +109,7 @@ my_breaks <- seq(0, 1, length.out = 100)
 rf1 = TreeDist::RobinsonFoulds(e1, normalize=T)
 mat1 <- as.matrix(rf1)
 heat1 = pheatmap(mat1, 
-         display_numbers = TRUE,     # Shows the values
+         display_numbers = T,     # Shows the values
          number_color = "black", 
          fontsize_number = 10, breaks = my_breaks,
          cluster_rows = F, cluster_cols = F)
@@ -399,26 +399,34 @@ colnames(mat4_branch) <- gsub("tree", "", colnames(mat4_branch))
 # Step 5. Plot the heatmap
 
 #Dataset 1
+labels1 = matrix(sprintf("%.1f%%", mat1_branch * 100),
+                nrow = nrow(mat1_branch))
 heat1_branch = pheatmap(mat1_branch, 
-                 display_numbers = TRUE,     # Shows the values
+                 display_numbers = labels1,     # Shows the values
                  number_color = "black", 
                  fontsize_number = 10,breaks = my_breaks,
                  cluster_rows = F, cluster_cols = F)
 #Dataset 2
+labels2 = matrix(sprintf("%.1f%%", mat2_branch * 100),
+                nrow = nrow(mat2_branch))
 heat2_branch = pheatmap(mat2_branch, 
-                        display_numbers = TRUE,     # Shows the values
+                        display_numbers = labels2,     # Shows the values
                         number_color = "black", 
                         fontsize_number = 10,breaks = my_breaks,
                         cluster_rows = F, cluster_cols = F)
 #Dataset 3
+labels3 = matrix(sprintf("%.1f%%", mat3_branch * 100),
+                 nrow = nrow(mat3_branch))
 heat3_branch = pheatmap(mat3_branch, 
-                        display_numbers = TRUE,     # Shows the values
+                        display_numbers = labels3,     # Shows the values
                         number_color = "black", 
                         fontsize_number = 10,breaks = my_breaks,
                         cluster_rows = F, cluster_cols = F)
 #Dataset 4
+labels4 = matrix(sprintf("%.1f%%", mat4_branch * 100),
+                 nrow = nrow(mat4_branch))
 heat4_branch = pheatmap(mat4_branch, 
-                        display_numbers = TRUE,     # Shows the values
+                        display_numbers = labels4,     # Shows the values
                         number_color = "black", 
                         fontsize_number = 10,breaks = my_breaks,
                         cluster_rows = F, cluster_cols = F)

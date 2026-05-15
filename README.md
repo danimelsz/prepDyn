@@ -133,7 +133,7 @@ Dynamic homology implemented in **POY/PhyG** is NP-hard. If sequences are too lo
 <details>
 <summary>How to specify missing data and multi-amplicons in the input CSV file?</summary>
 
-In many cases, sequences are available for a few genes but not others. In this case, missing data should be indicated with the string "NA" in the CSV cell. Moreover, there are a few cases where researchers sequence the same gene from the same specimen and thus two or more GenBank accession numbers are available. These multi-amplicons can partially or fully share overlapping sequences. prepDyn allows overlapping regions from one of the sequences to be deleted or compute the consensus sequence.
+In many cases, sequences are available for a few genes but not others. In this case, missing data should be indicated with the string "NA" in the CSV cell. CSV cells may contain either GenBank accession numbers or local sequence-file paths (absolute or relative), and the same table can mix both sources. For multi-amplicons, GenBank accession numbers may be delimited with `/` or `|`, while local file paths should be delimited with `|`. These multi-amplicons can partially or fully share overlapping sequences. prepDyn allows overlapping regions from one of the sequences to be deleted or compute the consensus sequence.
 
 </details>
 
@@ -141,6 +141,13 @@ In many cases, sequences are available for a few genes but not others. In this c
 <summary>What is the best partitioning strategy?</summary>
 
 The best partitioning strategy is dataset-dependent and the user must test it empirically. Empirical analyses indicate that conservative, equal-length, and maximum partitioning perform better.
+
+</details>
+
+<details>
+<summary>Can I run several partitioning strategies or rounds at once?</summary>
+
+Yes. `partitioning_method` accepts `all`, which runs `conservative`, `balanced`, `max`, and `equal` in separate directories. `partitioning_round` also accepts ranges such as `0-10`, which generate one run per round. For example, `prepDyn.py -pm all -pr 0-2 -o output` creates one directory per method under `output`, and within each method directory creates subdirectories for `round_0`, `round_1`, and `round_2`. If `CSV_input` is used in one of these batch runs, GenBank sequences are downloaded and aligned only once, and all subsequent batch runs reuse the cached aligned FASTA files.
 
 </details>
 

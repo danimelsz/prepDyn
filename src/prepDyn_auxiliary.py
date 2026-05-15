@@ -259,6 +259,134 @@ BASES_TO_IUPAC = {
     frozenset(bases): code for code, bases in IUPAC_TO_BASES.items() if code != "U"
 }
 
+LOCAL_SEQUENCE_SUFFIXES = {
+    ".fa", ".fas", ".fasta", ".fna", ".ffn", ".faa", ".frn",
+    ".gb", ".gbk", ".genbank", ".embl", ".fastq", ".fq", ".seq",
+    ".seqxml", ".nex", ".nexus", ".phy", ".phylip"
+}
+
+LOCAL_SEQUENCE_FORMAT_CANDIDATES = [
+    "fasta",
+    "genbank",
+    "embl",
+    "fastq",
+    "nexus",
+    "phylip",
+    "seqxml",
+    "ig",
+    "tab"
+]
+
+EXTENSION_TO_SEQIO_FORMAT = {
+    ".fa": "fasta",
+    ".fas": "fasta",
+    ".fasta": "fasta",
+    ".fna": "fasta",
+    ".ffn": "fasta",
+    ".faa": "fasta",
+    ".frn": "fasta",
+    ".gb": "genbank",
+    ".gbk": "genbank",
+    ".genbank": "genbank",
+    ".embl": "embl",
+    ".fastq": "fastq",
+    ".fq": "fastq",
+    ".seqxml": "seqxml",
+    ".nex": "nexus",
+    ".nexus": "nexus",
+    ".phy": "phylip",
+    ".phylip": "phylip"
+}
+
+def _looks_like_local_sequence_path(source_text):
+    expanded = os.path.expanduser(source_text.strip())
+    suffix = pathlib.Path(expanded).suffix.lower()
+    return (
+        os.path.isabs(expanded)
+        or expanded.startswith(".")
+        or expanded.startswith("~")
+        or "\\" in source_text
+        or suffix in LOCAL_SEQUENCE_SUFFIXES
+    )
+
+def _resolve_local_sequence_path(source_text, csv_dir):
+    expanded = os.path.expanduser(source_text.strip())
+    candidates = []
+    if os.path.isabs(expanded):
+        candidates.append(expanded)
+    else:
+        candidates.append(os.path.join(csv_dir, expanded))
+        candidates.append(expanded)
+
+    for candidate in candidates:
+        if os.path.isfile(candidate):
+            return os.path.abspath(candidate)
+    return None
+
+def _read_single_sequence_file(file_path):
+    suffix = pathlib.Path(file_path).suffix.lower()
+    candidate_formats = []
+    preferred_format = EXTENSION_TO_SEQIO_FORMAT.get(suffix)
+    if preferred_format:
+        candidate_formats.append(preferred_format)
+    candidate_formats.extend(
+        file_format for file_format in LOCAL_SEQUENCE_FORMAT_CANDIDATES
+        if file_format not in candidate_formats
+    )
+
+    parse_errors = []
+    for file_format in candidate_formats:
+        try:
+            with open(file_path, "r") as handle:
+                records = list(SeqIO.parse(handle, file_format))
+        except Exception as exc:
+            parse_errors.append(f"{file_format}: {exc}")
+            continue
+
+        if len(records) == 1:
+            return str(records[0].seq)
+        if len(records) > 1:
+            raise ValueError(
+                f"Local sequence file '{file_path}' contains {len(records)} records in {file_format} format. "
+                "Each CSV cell must resolve to exactly one sequence per amplicon."
+            )
+
+    raise ValueError(
+        f"Could not parse local sequence file '{file_path}'. Tried formats: {', '.join(candidate_formats)}. "
+        f"Last errors: {'; '.join(parse_errors[:3])}"
+    )
+
+def _parse_cell_sources(cell, csv_dir):
+    sources = []
+    for part in cell.split("|"):
+        token = part.strip()
+        if not token or token.upper() == "NA" or token == "-":
+            continue
+
+        local_path = _resolve_local_sequence_path(token, csv_dir)
+        if local_path:
+            sources.append({
+                "type": "local",
+                "label": token,
+                "path": local_path
+            })
+            continue
+
+        if _looks_like_local_sequence_path(token):
+            raise FileNotFoundError(
+                f"Local sequence file '{token}' was not found relative to '{csv_dir}'."
+            )
+
+        for accession in token.split("/"):
+            accession = accession.strip()
+            if accession and accession.upper() != "NA" and accession != "-":
+                sources.append({
+                    "type": "genbank",
+                    "label": accession
+                })
+
+    return sources
+
 def _iupac_consensus_char(base1, base2):
     bases1 = IUPAC_TO_BASES.get(base1.upper(), {base1.upper()})
     bases2 = IUPAC_TO_BASES.get(base2.upper(), {base2.upper()})
@@ -446,14 +574,22 @@ def _format_deleted_string_for_log(sequence, max_len=120):
 def _format_amplicon_groups_for_log(groups):
     return "; ".join("/".join(group) for group in groups)
 
-def _build_multi_amplicon_log(requested_accessions, fetched_accessions, failed_accessions, merge_events, final_groups):
-    lines = [f"Multi-amplicon input accessions: {'/'.join(requested_accessions)}"]
+def _build_source_origin_log(local_sources, genbank_sources):
+    lines = []
+    if local_sources:
+        lines.append(f"Local file sources: {' | '.join(local_sources)}")
+    if genbank_sources:
+        lines.append(f"GenBank sources: {'/'.join(genbank_sources)}")
+    return lines
 
-    if failed_accessions:
-        lines.append(f"Accessions not fetched: {'/'.join(failed_accessions)}")
+def _build_multi_amplicon_log(requested_sources, loaded_sources, failed_sources, merge_events, final_groups):
+    lines = [f"Multi-amplicon input sources: {' | '.join(requested_sources)}"]
 
-    if len(fetched_accessions) <= 1:
-        lines.append("Overlap classification: not enough fetched amplicons to evaluate overlap.")
+    if failed_sources:
+        lines.append(f"Sources not loaded: {' | '.join(failed_sources)}")
+
+    if len(loaded_sources) <= 1:
+        lines.append("Overlap classification: not enough loaded amplicons to evaluate overlap.")
         return lines
 
     if merge_events:
@@ -482,7 +618,7 @@ def _build_multi_amplicon_log(requested_accessions, fetched_accessions, failed_a
                         f"Overlapping: {left} with {right}; overlap {event['overlap_length']} bp{mismatch_note}; deleted string ({event['deleted_length']} bp): {deleted}"
                     )
     else:
-        lines.append("Overlapping: none detected among fetched multi-amplicon sequences.")
+        lines.append("Overlapping: none detected among loaded multi-amplicon sequences.")
 
     if len(final_groups) > 1:
         lines.append(f"Non-overlapping groups retained as separate fragments: {_format_amplicon_groups_for_log(final_groups)}")
@@ -497,8 +633,8 @@ def _build_multi_amplicon_log(requested_accessions, fetched_accessions, failed_a
 
 def GB2MSA_1(input_file, output_prefix, delimiter=',', write_names=True, multi_amplicon_min_overlap=10, multi_amplicon_mismatch_rate=0.05, multi_amplicon_action="trim"):
     """
-    Downloads GenBank sequences based on accession numbers in a CSV/TSV file and aligns them by gene using 
-    MAFFT. If two fragments of the same locus are concatenated with no overlap between them, the space
+    Loads locus sequences from GenBank accession numbers and/or local sequence files listed in a CSV/TSV
+    file and aligns them by gene using MAFFT. If two fragments of the same locus are concatenated with no overlap between them, the space
     between them will be treaed as missing data (15 Ws will flank these blocks of missing data, which will
     be used to track these regions and be replaced with question marks in GB2MSA_2).
 
@@ -506,8 +642,11 @@ def GB2MSA_1(input_file, output_prefix, delimiter=',', write_names=True, multi_a
     -----------
     input_file : str
         Path to the CSV or TSV input file. The first column should contain sequence names (sample identifiers).
-        The first row should contain gene names starting from the second column. Cells contain GenBank 
-        accession numbers (one or more separated by slashes). "NA", empty cells, or dashes are ignored.
+        The first row should contain gene names starting from the second column. Cells may contain GenBank
+        accession numbers (one or more separated by slashes and/or pipes), local sequence-file paths (absolute
+        or relative), or both across the same table. Multi-amplicon local files should be separated with
+        pipes ("|").
+        "NA", empty cells, or dashes are ignored.
 
     output_prefix : str
         Prefix used for naming intermediate FASTA files and final aligned output files.
@@ -537,6 +676,8 @@ def GB2MSA_1(input_file, output_prefix, delimiter=',', write_names=True, multi_a
     gene_names : list
         List of gene names parsed from the input file.
     """
+    csv_dir = os.path.dirname(os.path.abspath(input_file)) or os.getcwd()
+
     # Open the input CSV/TSV file
     with open(input_file, newline='') as file:
         reader = csv.reader(file, delimiter=delimiter)
@@ -574,23 +715,35 @@ def GB2MSA_1(input_file, output_prefix, delimiter=',', write_names=True, multi_a
                 if cell.upper() == "NA" or not cell or cell == "-":
                     continue
 
-                # Split accession numbers by '/' and filter out invalid entries
-                accessions = [acc for acc in cell.split('/') if acc.upper() != "NA" and acc != "" and acc != "-"]
-                sequences = []  # To hold the sequences retrieved from GenBank
-                fetched_accessions = []
-                failed_accessions = []
+                sources = _parse_cell_sources(cell, csv_dir)
+                if not sources:
+                    continue
+                sequences = []
+                loaded_sources = []
+                failed_sources = []
+                local_sources = [source["label"] for source in sources if source["type"] == "local"]
+                genbank_sources = [source["label"] for source in sources if source["type"] == "genbank"]
+                requested_sources = [source["label"] for source in sources]
 
-                # Fetch each sequence from GenBank
-                for acc in accessions:
-                    try:
-                        handle = Entrez.efetch(db="nucleotide", id=acc, rettype="fasta", retmode="text")
-                        seq_record = SeqIO.read(handle, "fasta")
-                        handle.close()
-                        sequences.append(str(seq_record.seq))  # Store the sequence string
-                        fetched_accessions.append(acc)
-                    except Exception as e:
-                        failed_accessions.append(acc)
-                        print(f"Error fetching {acc}: {e}")
+                for source in sources:
+                    if source["type"] == "local":
+                        try:
+                            sequences.append(_read_single_sequence_file(source["path"]))
+                            loaded_sources.append(source["label"])
+                        except Exception as e:
+                            failed_sources.append(source["label"])
+                            print(f"Error loading local sequence file {source['label']}: {e}")
+                    else:
+                        acc = source["label"]
+                        try:
+                            handle = Entrez.efetch(db="nucleotide", id=acc, rettype="fasta", retmode="text")
+                            seq_record = SeqIO.read(handle, "fasta")
+                            handle.close()
+                            sequences.append(str(seq_record.seq))
+                            loaded_sources.append(acc)
+                        except Exception as e:
+                            failed_sources.append(acc)
+                            print(f"Error fetching {acc}: {e}")
 
                 # Merge overlapping sequences if possible
                 sequences, m_log, final_groups = merge_overlapping_sequences(
@@ -598,17 +751,18 @@ def GB2MSA_1(input_file, output_prefix, delimiter=',', write_names=True, multi_a
                     multi_amplicon_min_overlap=multi_amplicon_min_overlap,
                     multi_amplicon_mismatch_rate=multi_amplicon_mismatch_rate,
                     multi_amplicon_action=multi_amplicon_action,
-                    labels=fetched_accessions
+                    labels=loaded_sources
                 )
 
-                if len(accessions) > 1:
-                    gb1_logs[gene_name][seq_name] = {
-                        "requested_accessions": accessions,
-                        "fetched_accessions": fetched_accessions,
-                        "failed_accessions": failed_accessions,
-                        "merge_events": m_log,
-                        "final_groups": final_groups
-                    }
+                gb1_logs[gene_name][seq_name] = {
+                    "requested_sources": requested_sources,
+                    "loaded_sources": loaded_sources,
+                    "failed_sources": failed_sources,
+                    "local_sources": local_sources,
+                    "genbank_sources": genbank_sources,
+                    "merge_events": m_log,
+                    "final_groups": final_groups
+                }
 
                 # Combine multiple sequences with 'W' delimiters to mark junctions (to be handled later)
                 combined_seq = "WWWWWWWWWWWWWWW".join(sequences)
@@ -2356,9 +2510,9 @@ def GB2MSA(input_file,
                     if metadata:
                         events.extend(
                             _build_multi_amplicon_log(
-                                metadata["requested_accessions"],
-                                metadata["fetched_accessions"],
-                                metadata["failed_accessions"],
+                                metadata["requested_sources"],
+                                metadata["loaded_sources"],
+                                metadata["failed_sources"],
                                 metadata["merge_events"],
                                 metadata["final_groups"]
                             )
@@ -2801,8 +2955,42 @@ def addSeq(
         except Exception:
             pass
 
+def _expand_partitioning_rounds(partitioning_round):
+    if isinstance(partitioning_round, range):
+        return list(partitioning_round)
+    if isinstance(partitioning_round, (list, tuple)):
+        return list(partitioning_round)
+    if isinstance(partitioning_round, str):
+        if partitioning_round == "max":
+            return ["max"]
+        if re.fullmatch(r"\d+-\d+", partitioning_round):
+            start, end = partitioning_round.split("-", 1)
+            return list(range(int(start), int(end) + 1))
+    return [partitioning_round]
+
+def _expand_partitioning_methods(partitioning_method):
+    if isinstance(partitioning_method, str) and partitioning_method.lower() == "all":
+        return ["conservative", "balanced", "max", "equal"]
+    return [partitioning_method]
+
+def _build_batch_output_prefix(output_file, method_name, round_value, method_batch_active, round_batch_active):
+    root_output = output_file or "output"
+    normalized_root = os.path.normpath(root_output)
+    prefix_base = os.path.basename(normalized_root)
+    if not prefix_base or prefix_base == os.path.sep:
+        prefix_base = "output"
+
+    run_directory = root_output
+    if method_batch_active:
+        run_directory = os.path.join(run_directory, str(method_name))
+        run_directory = os.path.join(run_directory, f"round_{round_value}")
+    elif round_batch_active:
+        run_directory = os.path.join(run_directory, f"round_{round_value}")
+
+    return os.path.join(run_directory, prefix_base)
+
 def prepDyn(input_file=None,
-            GB_input=None,
+            CSV_input=None,
             input_format="fasta",
             MSA=False,
             output_file=None,
@@ -2838,8 +3026,8 @@ def prepDyn(input_file=None,
     highly conserved regions.
 
     Args:
-        input_file (str): Path to the input alignment file or directory. Ignored if GB_input is provided.
-        GB_input (str): Path to a CSV/TSV file containing GenBank accession numbers. If provided,
+        input_file (str): Path to the input alignment file or directory. Ignored if CSV_input is provided.
+        CSV_input (str): Path to a CSV/TSV file containing GenBank accession numbers. If provided,
                         sequences will be downloaded from GenBank and aligned before preprocessing.
         input_format (str): Format of the input alignment. Options: 'fasta' (default),
                             'clustal', 'phylip', or any format accepted by Biopython.
@@ -2864,7 +3052,7 @@ def prepDyn(input_file=None,
                                      removes one overlapping copy; "consensus" replaces the overlap
                                      with IUPAC consensus nucleotides.
         internal_method (str): Defines how to identify internal missing data. Automatic identificaton
-                               of missing data is made if GB_input is provided. Otherwise, naive
+                               of missing data is made if CSV_input is provided. Otherwise, naive
                                options to identify internal missing data are:
                                - "manual": Use column ranges;
                                - "semi": Use a threshold for gaps.
@@ -2887,6 +3075,7 @@ def prepDyn(input_file=None,
                                    inserted; if partitioning_round = 2, then 2 '#' columns are inserted.
                                    - 'max': '#' columns are inserted around blocks of missing data (every
                                    instance of '?' opening/closure but not '?' extension).
+                                   - 'all': Run conservative, balanced, max, and equal in separate directories.
         partitioning_conservative (str): Conservative partition placement mode. Use 'midpoint'
                                          (default) to insert one '#' in the middle of each selected
                                          invariant block, or 'flank' to insert '#' columns on both sides
@@ -2894,10 +3083,11 @@ def prepDyn(input_file=None,
         partitioning_max_size (int): Initial maximum partition size. If specified, the alignment is first
                                      split into equal-length partitions of this size, and the selected
                                      partitioning method is then applied independently within each partition.
-        partitioning_round (int): Number of partitioning round. Invariant regions are sorted by length
-                                  in descendant order and the n-largest block(s) partitioned using '#'.
-                                  If "max" is specified, pound signs are inserted arund all blocks of
-                                  missing data.
+        partitioning_round (int or str): Number of partitioning round. Invariant regions are sorted by length
+                                         in descendant order and the n-largest block(s) partitioned using '#'.
+                                         Ranges such as "0-10" generate one run per round in separate directories.
+                                         If "max" is specified, pound signs are inserted arund all blocks of
+                                         missing data.
         partitioning_size (int): Size of equal-length partitions if partitioning_method = 'equal'.
 
     Returns:
@@ -2918,7 +3108,7 @@ def prepDyn(input_file=None,
     cmd_parts = ["prepDyn("]
     params = {
         "input_file": input_file,
-        "GB_input": GB_input,
+        "CSV_input": CSV_input,
         "input_format": input_format,
         "MSA": MSA,
         "output_file": output_file,
@@ -2959,9 +3149,87 @@ def prepDyn(input_file=None,
     cmd_parts.append(")")
     original_cmd_line = "".join(cmd_parts)
 
+    expanded_methods = _expand_partitioning_methods(partitioning_method)
+    expanded_rounds = _expand_partitioning_rounds(partitioning_round)
+    method_batch_active = len(expanded_methods) > 1
+    round_batch_active = len(expanded_rounds) > 1
+
+    if method_batch_active or round_batch_active:
+        batch_input_file = input_file
+        batch_csv_input = CSV_input
+        batch_input_format = input_format
+        batch_msa = MSA
+
+        if CSV_input is not None:
+            cache_root = os.path.join(output_file or "output", "_gb2msa_cache")
+            cache_output_prefix = os.path.join(cache_root, "cache")
+            cache_alignment_dir = os.path.join(cache_root, "alignments")
+            os.makedirs(cache_alignment_dir, exist_ok=True)
+
+            print("Running GB2MSA on GenBank input once for batch partitioning...")
+            cleaned_files, _, gene_names = GB2MSA(
+                CSV_input,
+                output_prefix=cache_output_prefix,
+                write_names=False,
+                log=False,
+                multi_amplicon_min_overlap=multi_amplicon_min_overlap,
+                multi_amplicon_mismatch_rate=multi_amplicon_mismatch_rate,
+                multi_amplicon_action=multi_amplicon_action,
+                return_gene_logs=True,
+                write_run_log=False
+            )
+
+            for gene_name, cleaned_file in zip(gene_names, cleaned_files):
+                cached_alignment_path = os.path.join(cache_alignment_dir, f"{gene_name}.fasta")
+                shutil.copy2(cleaned_file, cached_alignment_path)
+
+            batch_input_file = cache_alignment_dir
+            batch_csv_input = None
+            batch_input_format = "fasta"
+            batch_msa = False
+
+        for method_name in expanded_methods:
+            for round_value in expanded_rounds:
+                batch_output_prefix = _build_batch_output_prefix(
+                    output_file,
+                    method_name,
+                    round_value,
+                    method_batch_active=method_batch_active,
+                    round_batch_active=round_batch_active
+                )
+                prepDyn(
+                    input_file=batch_input_file,
+                    CSV_input=batch_csv_input,
+                    input_format=batch_input_format,
+                    MSA=batch_msa,
+                    output_file=batch_output_prefix,
+                    output_format=output_format,
+                    log=log,
+                    sequence_names=sequence_names,
+                    orphan_method=orphan_method,
+                    orphan_threshold=orphan_threshold,
+                    orphan_action=orphan_action,
+                    percentile=percentile,
+                    del_inv=del_inv,
+                    multi_amplicon_min_overlap=multi_amplicon_min_overlap,
+                    multi_amplicon_mismatch_rate=multi_amplicon_mismatch_rate,
+                    multi_amplicon_action=multi_amplicon_action,
+                    internal_method=internal_method,
+                    internal_column_ranges=internal_column_ranges,
+                    internal_leaves=internal_leaves,
+                    internal_threshold=internal_threshold,
+                    n2question=n2question,
+                    partitioning_round=round_value,
+                    partitioning_method=method_name,
+                    partitioning_conservative=partitioning_conservative,
+                    partitioning_max_size=partitioning_max_size,
+                    partitioning_size=partitioning_size
+                )
+        return None
+
 
     def _prepDyn_recursive(input_val, # Renamed to input_val to be more generic for file path or dict
-                           GB_input,
+                           CSV_input,
                            input_format,
                            MSA,
                            output_file, # This is crucial: the output prefix for THIS specific call
@@ -3005,13 +3273,13 @@ def prepDyn(input_file=None,
 
 
         # Step 1: Run GB2MSA if GenBank input is provided
-        if GB_input is not None:
+        if CSV_input is not None:
             # (This part of the logic remains unchanged)
             print("Running GB2MSA on GenBank input...")
             
             gb_output_prefix_for_gb2msa = output_file 
             cleaned_files, gb1_logs, gene_names = GB2MSA(
-                GB_input,
+                CSV_input,
                 output_prefix=gb_output_prefix_for_gb2msa,
                 write_names=False,
                 log=log,
@@ -3038,7 +3306,7 @@ def prepDyn(input_file=None,
                 alignment_dict = {record.id: str(record.seq) for record in alignment}
                 _all_sequence_ids.update(alignment_dict.keys())
                 _prepDyn_recursive(input_val=alignment_dict,
-                                GB_input=None, input_format="dict", MSA=MSA,
+                                CSV_input=None, input_format="dict", MSA=MSA,
                                 orphan_method=orphan_method, orphan_threshold=orphan_threshold, orphan_action=orphan_action, percentile=percentile, del_inv=del_inv, multi_amplicon_min_overlap=multi_amplicon_min_overlap, multi_amplicon_mismatch_rate=multi_amplicon_mismatch_rate, multi_amplicon_action=multi_amplicon_action,
                                 internal_method=internal_method, internal_column_ranges=internal_column_ranges, internal_leaves=internal_leaves, internal_threshold=internal_threshold,
                                 n2question=n2question, partitioning_method=partitioning_method, partitioning_round=partitioning_round, partitioning_conservative=partitioning_conservative, partitioning_max_size=partitioning_max_size, partitioning_size=partitioning_size,
@@ -3096,7 +3364,7 @@ def prepDyn(input_file=None,
                     if current_file_alignment:
                         _all_sequence_ids.update(current_file_alignment.keys())
                         _prepDyn_recursive(input_val=current_file_alignment,
-                                GB_input=None, input_format="dict", MSA=False,
+                                CSV_input=None, input_format="dict", MSA=False,
                                 orphan_method=orphan_method, orphan_threshold=orphan_threshold, orphan_action=orphan_action, percentile=percentile, del_inv=del_inv, multi_amplicon_min_overlap=multi_amplicon_min_overlap, multi_amplicon_mismatch_rate=multi_amplicon_mismatch_rate, multi_amplicon_action=multi_amplicon_action,
                                 internal_method=internal_method, internal_column_ranges=internal_column_ranges, internal_leaves=internal_leaves, internal_threshold=internal_threshold,
                                 n2question=n2question, partitioning_method=partitioning_method, partitioning_round=partitioning_round, partitioning_conservative=partitioning_conservative, partitioning_max_size=partitioning_max_size, partitioning_size=partitioning_size,
@@ -3294,20 +3562,33 @@ def prepDyn(input_file=None,
                 ### END FIX PART 2 ###
 
                 if _gb_gene_log_metadata:
+                    source_summary_lines = []
                     multi_amplicon_lines = []
                     for seq_name, metadata in _gb_gene_log_metadata.items():
-                        events = _build_multi_amplicon_log(
-                            metadata["requested_accessions"],
-                            metadata["fetched_accessions"],
-                            metadata["failed_accessions"],
-                            metadata["merge_events"],
-                            metadata["final_groups"]
+                        source_lines = _build_source_origin_log(
+                            metadata["local_sources"],
+                            metadata["genbank_sources"]
                         )
-                        if events:
+                        if source_lines:
+                            source_summary_lines.append(f"{seq_name}:")
+                            source_summary_lines.extend([f"  - {line}" for line in source_lines])
+
+                        if len(metadata["requested_sources"]) > 1:
+                            events = _build_multi_amplicon_log(
+                                metadata["requested_sources"],
+                                metadata["loaded_sources"],
+                                metadata["failed_sources"],
+                                metadata["merge_events"],
+                                metadata["final_groups"]
+                            )
                             multi_amplicon_lines.append(f"{seq_name}:")
                             multi_amplicon_lines.extend([f"  - {event}" for event in events])
+                    if source_summary_lines:
+                        log_file.write("--- Step 1: Input sequence sources ---\n")
+                        log_file.write("\n".join(source_summary_lines))
+                        log_file.write("\n\n")
                     if multi_amplicon_lines:
-                        log_file.write("--- Step 1: Multi-amplicon processing from GenBank ---\n")
+                        log_file.write("--- Step 1: Multi-amplicon processing ---\n")
                         log_file.write("\n".join(multi_amplicon_lines))
                         log_file.write("\n\n")
 
@@ -3441,7 +3722,7 @@ def prepDyn(input_file=None,
 
     # --- Initial call to the recursive helper function (Unchanged) ---
     final_processed_alignment = _prepDyn_recursive(input_val=input_file,
-                                                   GB_input=GB_input,
+                                                   CSV_input=CSV_input,
                                                    input_format=input_format,
                                                    MSA=MSA,
                                                    output_file=output_file,
@@ -3482,7 +3763,7 @@ def prepDyn(input_file=None,
             if os.path.isdir(original_output_file_arg) and not output_base_for_final_names:
                 output_base_for_final_names = os.path.basename(os.path.normpath(original_output_file_arg))
             names_file_path = os.path.join(output_dir_for_final_names, f"{output_base_for_final_names}_sequence_names.txt")
-        elif GB_input: names_file_path = "output_sequence_names.txt"
+        elif CSV_input: names_file_path = "output_sequence_names.txt"
         elif isinstance(input_file, str) and os.path.isdir(input_file):
             base_for_names = os.path.basename(os.path.normpath(input_file))
             names_file_path = f"{base_for_names}_sequence_names.txt"
@@ -3497,7 +3778,7 @@ def prepDyn(input_file=None,
                 for name in sorted_unique_names:
                     nf.write(f"{name}\n")
 
-    if log and (GB_input is not None or (isinstance(input_file, str) and os.path.isdir(input_file))):
+    if log and (CSV_input is not None or (isinstance(input_file, str) and os.path.isdir(input_file))):
         overall_end_wall_time = time.time()
         overall_end_cpu_time = time.process_time()
         total_wall_time = overall_end_wall_time - overall_start_wall_time
@@ -3511,7 +3792,7 @@ def prepDyn(input_file=None,
             if os.path.isdir(original_output_file_arg) and not output_base_for_overall_log:
                 output_base_for_overall_log = os.path.basename(os.path.normpath(original_output_file_arg))
             overall_log_path = os.path.join(output_dir_for_overall_log, f"{output_base_for_overall_log}_overall_log.txt")
-        elif GB_input: overall_log_path = "overall_prepDyn_log.txt"
+        elif CSV_input: overall_log_path = "overall_prepDyn_log.txt"
         elif isinstance(input_file, str) and os.path.isdir(input_file):
             base_for_overall_log = os.path.basename(os.path.normpath(input_file))
             overall_log_path = f"{base_for_overall_log}_overall_log.txt"
@@ -3525,7 +3806,7 @@ def prepDyn(input_file=None,
                 of.write(f"Total CPU time: {total_cpu_time:.8f} seconds\n")
                 of.write("\nNote: Individual gene/alignment logs provide detailed information.\n")
 
-    if GB_input or (isinstance(input_file, str) and os.path.isdir(input_file)):
+    if CSV_input or (isinstance(input_file, str) and os.path.isdir(input_file)):
         return None 
     else:
         return final_processed_alignment

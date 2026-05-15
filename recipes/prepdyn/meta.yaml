@@ -1,0 +1,56 @@
+package:
+  name: prepdyn
+  version: 0.4.0
+
+source:
+  url: https://github.com/dnakamuraz/prepDyn/archive/refs/tags/v0.4.0.tar.gz
+  sha256: 6e502d405e0a95c27c0eb9b26cf18203cdd1cc120e8b8400d5a62769e2233d1e
+
+build:
+  number: 0
+  noarch: python
+  script: {{ PYTHON }} -m pip install . -vv
+  entry_points:
+    - prepDyn = prepDyn:main
+    - GB2MSA = GB2MSA:main
+    - addSeq = addSeq:main
+    - UP2AP = UP2AP:main
+
+requirements:
+  build:
+    - python >=3.8
+    - pip
+    - setuptools
+  host:
+    - python >=3.8
+    - pip
+    - setuptools
+  run:
+    - python >=3.8
+    - biopython
+    - matplotlib
+    - numpy
+    - termcolor
+    - mafft
+
+test:
+  imports:
+    - prepDyn_auxiliary
+    - GB2MSA
+    - addSeq
+    - UP2AP
+  commands:
+    - prepDyn --help
+    - GB2MSA --help
+    - addSeq --help
+    - UP2AP --help
+
+about:
+  home: https://github.com/dnakamuraz/prepDyn
+  license: GPL-3.0-only
+  license_family: GPL
+  summary: Preprocessing toolkit for dynamic homology datasets
+
+extra:
+  recipe-maintainers:
+    - dnakamuraz

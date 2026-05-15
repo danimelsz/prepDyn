@@ -1,0 +1,15 @@
+LICENSE
+README.md
+pyproject.toml
+setup.py
+src/GB2MSA.py
+src/UP2AP.py
+src/addSeq.py
+src/prepDyn.py
+src/prepDyn_auxiliary.py
+src/prepdyn.egg-info/PKG-INFO
+src/prepdyn.egg-info/SOURCES.txt
+src/prepdyn.egg-info/dependency_links.txt
+src/prepdyn.egg-info/entry_points.txt
+src/prepdyn.egg-info/requires.txt
+src/prepdyn.egg-info/top_level.txt

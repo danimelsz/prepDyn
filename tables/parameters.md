@@ -4,13 +4,13 @@ List of parameters in prepDyn scripts. Parameters can be either specified with l
 
 | **Parameter**                       | **Type**              | **Default**      | **Description** |
 | ----------------------------------- | --------------------- | ---------------- | --------------- |
-| `input_file` or `i`                 | `str`                 | –                | Path to an input alignment file or a directory containing multiple files. Required unless `GB_input` is provided. |
-| `GB_input` or `gb`                  | `str`                 | –                | Path to a CSV/TSV dataframe with GenBank accession numbers. Required unless `input_file` is provided. |
+| `input_file` or `i`                 | `str`                 | –                | Path to an input alignment file or a directory containing multiple files. Required unless `CSV_input` is provided. |
+| `CSV_input` or `csv`                | `str`                 | –                | Path to a CSV/TSV dataframe with GenBank accession numbers and/or local sequence-file paths. Required unless `input_file` is provided. Cells may contain GenBank multi-amplicons delimited by `/` or `|`. |
 | `input_format` or `if`              | `str`                 | `"fasta"`        | Input format, such as `fasta`, `clustal`, `phylip`, or any format accepted by Biopython. |
 | `output_file` or `o`                | `str`                 | –                | Path or prefix for output file(s). |
 | `output_format` or `of`             | `str`                 | `"fasta"`        | Output alignment format. |
 | `log` or `l`                        | `bool`                | `True`           | Write a time log. |
-| `MSA` or `msa`                      | `bool`                | `False`          | Perform a multiple sequence alignment when `input_file` contains unaligned sequences. Ignored if `GB_input` is used. |
+| `MSA` or `msa`                      | `bool`                | `False`          | Perform a multiple sequence alignment when `input_file` contains unaligned sequences. Ignored if `CSV_input` is used. |
 | `sequence_names` or `s`             | `bool`                | `True`           | Write a file with sequence names. Useful for taxon sampling in POY/PhyG. |
 | `multi_amplicon_min_overlap` or `mo`| `int`                 | `10`             | Minimum overlap length required to merge overlapping multi-amplicons downloaded from GenBank. |
 | `multi_amplicon_mismatch_rate` or `mr` | `float`            | `0.05`           | Maximum mismatch rate allowed when merging overlapping multi-amplicons from GenBank. |
@@ -25,8 +25,8 @@ List of parameters in prepDyn scripts. Parameters can be either specified with l
 | `internal_leaves` or `g2q_l`        | `str` or `list`       | `"all"`          | Sequence names to which internal missing-data handling is applied. Use `all` or a comma-separated list. |
 | `internal_threshold` or `g2q_t`     | `int`                 | `None`           | Gap-length threshold used when `internal_method='semi'`. |
 | `n2question` or `n2q`               | `str` or `list`       | `None`           | Replace IUPAC `N` with `?`. Use `all`, a single leaf name, a list of leaf names, or `None`. |
-| `partitioning_method` or `pm`       | `str`                 | `"conservative"` | Partitioning method: `balanced`, `conservative`, `equal`, `max`, or `None`. |
-| `partitioning_round` or `pr`        | `int`                 | `0`              | Round or number of selected blocks used by `balanced`, `conservative`, or `equal` partitioning. |
+| `partitioning_method` or `pm`       | `str`                 | `"conservative"` | Partitioning method: `balanced`, `conservative`, `equal`, `max`, `None`, or `all`. `all` runs the four partitioning methods in separate directories. When `CSV_input` is used, GenBank download/alignment is performed once and reused across the batch runs. |
+| `partitioning_round` or `pr`        | `int` or `str`        | `0`              | Round or number of selected blocks used by `balanced`, `conservative`, or `equal` partitioning. Ranges such as `0-10` generate one run per round in separate directories. When `CSV_input` is used in batch mode, these runs reuse the same cached aligned FASTA files. |
 | `partitioning_conservative` or `pc` | `str`                 | `"midpoint"`     | Placement mode for conservative partitioning: `midpoint` inserts one `#` in the middle of each selected invariant block, and `flank` inserts `#` columns around each selected invariant block. |
 | `partitioning_max_size` or `pms`    | `int`                 | `None`           | Initial maximum partition size. If set, the alignment is first split into equal-length partitions of this size, and the selected partitioning method is then applied independently within each partition. |
 | `partitioning_size` or `ps`         | `int`                 | `None`           | Size of equal-length partitions when `partitioning_method='equal'`. |
@@ -35,7 +35,7 @@ List of parameters in prepDyn scripts. Parameters can be either specified with l
 
 | **Parameter**                            | **Type** | **Default** | **Description** |
 | ---------------------------------------- | -------- | ----------- | --------------- |
-| `input_file` or `i`                      | `str`    | –           | Path to a CSV/TSV file with GenBank accession numbers. Each cell may contain one accession or multiple slash-delimited accessions for the same locus. |
+| `CSV_input` or `csv`                     | `str`    | –           | Path to a CSV/TSV file with GenBank accession numbers and/or local sequence-file paths. Each cell may contain one accession, multiple slash- or pipe-delimited GenBank accessions, one local file path, or multiple pipe-delimited local file paths for the same locus. |
 | `output_prefix` or `o`                   | `str`    | –           | Path or prefix for output FASTA files. |
 | `delimiter` or `d`                       | `str`    | `","`       | Delimiter used in the input file. |
 | `write_names` or `w`                     | `bool`   | `True`      | Write sequence names in a separate file for taxon sampling in POY/PhyG. |

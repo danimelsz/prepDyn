@@ -102,10 +102,29 @@ def parse_internal_column_ranges(value):
 def parse_partitioning_round(value):
     if value == "max":
         return value
+    if re.fullmatch(r"\d+-\d+", value):
+        start, end = value.split("-", 1)
+        if int(start) > int(end):
+            raise argparse.ArgumentTypeError("partitioning_round ranges must be in ascending order (e.g. 0-10).")
+        return value
     try:
         return int(value)
     except ValueError:
-        raise argparse.ArgumentTypeError("partitioning_round must be an integer or 'max'")
+        raise argparse.ArgumentTypeError("partitioning_round must be an integer, a range like '0-10', or 'max'")
+
+def parse_partitioning_method(value):
+    normalized = value.lower()
+    method_map = {
+        "balanced": "balanced",
+        "conservative": "conservative",
+        "equal": "equal",
+        "max": "max",
+        "none": "None",
+        "all": "all",
+    }
+    if normalized not in method_map:
+        raise argparse.ArgumentTypeError("partitioning_method must be one of: balanced, conservative, equal, max, None, all")
+    return method_map[normalized]
 
 def parse_n2question_leaves(value):
     if value.lower() == "none":
@@ -145,7 +164,7 @@ def main():
         epilog="""\
 Examples:
   # Given a CSV file with GenBank accession numbers, download and align sequences, and identify terminal and internal missing data
-  python prepDyn.py -gb accessions.csv -o output
+  python prepDyn.py -csv accessions.csv -o output
 
   # Given a FASTA alignment, identify terminal missing data and delete orphan nucleotides of length < 10.
   python prepDyn.py -i aln.fasta -o output -om integer -ot 10 -oa trim
@@ -154,16 +173,19 @@ Examples:
   python prepDyn.py -i aln.fasta -o output -n2q sp1,sp4
 
   # Given a CSV file with GenBank accession numbers, download and align sequences, identify terminal and internal missing data, trim invariants and orphan nucleotides  
-  python prepDyn.py -gb accessions.csv -o output -di True -g2q semi 
+  python prepDyn.py -csv accessions.csv -o output -di True -g2q semi 
+
+  # Run all partitioning methods and rounds 0, 1, and 2 in separate method/round directories
+  python prepDyn.py -i aln.fasta -o output -pm all -pr 0-2
 """)
     # Parsing
-    parser.add_argument("-i", "--input_file", help="Path to input alignment file or directory containing multiple files. Ignored if GB_input is provided.", default=None)
-    parser.add_argument("-gb", "--GB_input", help="Path to a dataframe containing GenBank accession numbers (CSV/TSV). If provided, sequences will be downloaded from GenBank and aligned using MAFFT before preprocessing. Cells may contain one accession or multiple slash-delimited accessions for the same locus. Ignored if input_file is provided.", default=None)
+    parser.add_argument("-i", "--input_file", help="Path to input alignment file or directory containing multiple files. Ignored if CSV_input is provided.", default=None)
+    parser.add_argument("-gb", "-csv", "--CSV_input", dest="CSV_input", help="Path to a CSV/TSV dataframe containing GenBank accession numbers and/or local sequence-file paths. If provided, sequences will be loaded, aligned with MAFFT, and then preprocessed. Cells may contain one accession, multiple slash- or pipe-delimited GenBank accessions, one local file path, or multiple pipe-delimited local file paths for the same locus. Ignored if input_file is provided.", default=None)
     parser.add_argument("-if", "--input_format", help="Input file format. Options: 'fasta' (default), 'clustal', 'phylip', or any format accepted by Biopython.", default="fasta")
     parser.add_argument("-o", "--output_file", help="Path (including prefix) for output file(s)", default=None)
     parser.add_argument("-of", "--output_format", help="Output format [default: fasta]", default="fasta")
     parser.add_argument("-l", "--log", default=True, type=str2bool, help="Write time log")
-    parser.add_argument("-msa", "--MSA", default=False, type=str2bool, help="Perform a MSA. Only use it if the sequences specified in input_file are unaligned. Ignore if GB_input is used.")
+    parser.add_argument("-msa", "--MSA", default=False, type=str2bool, help="Perform a MSA. Only use it if the sequences specified in input_file are unaligned. Ignore if CSV_input is used.")
     parser.add_argument("-s", "--sequence_names", default=True, type=str2bool, help="Write sequence names. Useful to manage taxon sampling in POY/PhyG.")
     parser.add_argument("-mo", "--multi_amplicon_min_overlap", type=int, default=10, help="Minimum overlap length to merge multi-amplicons when downloading from GenBank (default: 10).")
     parser.add_argument("-mr", "--multi_amplicon_mismatch_rate", type=parse_mismatch_rate, default=0.05, help="Maximum mismatch rate allowed when merging overlapping multi-amplicons from GenBank (default: 0.05).")
@@ -184,8 +206,8 @@ Examples:
     parser.add_argument("-n2q", "--n2question", type=parse_n2question_leaves, default=None, help="Replace IUPAC N with ?. Options: 'none' (default), 'all' (apply to all leaves), single leaf name, or list of leaf names ['sp1', 'sp2'].")
 
     # Partitioning
-    parser.add_argument("-pm", "--partitioning_method", type=str, default="conservative", choices=["balanced", "conservative", "equal", "max", "None"], help="Method of partitioning. Options: (1) conservative (given blocks of contiguous invariants sorted by length, partition the n-largest block(s); define n using partitioning_round), (2) equal (insert # to divide the alignment into equal-length partitions; define the size of partitions using partitioning_size or the round of partitioning using partitioning_round); (3) max (insert '#' columns around blocks of contiguous missing data i.e. before and after every instance of '?' opening/closure); (4) balanced (insert '#' around the n largest block of missing data; define n using partitioning_round).")
-    parser.add_argument("-pr", "--partitioning_round", type=parse_partitioning_round, help="Round of successive partitioning. Use it if partitioning_method is 'balanced', 'conservative' or 'equal'.", default=0)
+    parser.add_argument("-pm", "--partitioning_method", type=parse_partitioning_method, default="conservative", help="Method of partitioning. Options: (1) conservative (given blocks of contiguous invariants sorted by length, partition the n-largest block(s); define n using partitioning_round), (2) equal (insert # to divide the alignment into equal-length partitions; define the size of partitions using partitioning_size or the round of partitioning using partitioning_round); (3) max (insert '#' columns around blocks of contiguous missing data i.e. before and after every instance of '?' opening/closure); (4) balanced (insert '#' around the n largest block of missing data; define n using partitioning_round); (5) all (run conservative, balanced, max, and equal in separate directories).")
+    parser.add_argument("-pr", "--partitioning_round", type=parse_partitioning_round, help="Round of successive partitioning. Use it if partitioning_method is 'balanced', 'conservative' or 'equal'. Ranges such as '0-10' generate one run per round in separate directories.", default=0)
     parser.add_argument("-pc", "--partitioning_conservative", type=str, default="midpoint", choices=["midpoint", "flank"], help="Placement mode for conservative partitioning. Use 'midpoint' (default) to insert one '#' in the middle of each selected invariant block, or 'flank' to insert '#' columns around each selected invariant block.")
     parser.add_argument("-pms", "--partitioning_max_size", type=int, default=None, help="Initial maximum partition size. If specified, the alignment is first split into equal-length partitions of this size, and the selected partitioning method is then applied independently within each partition.")
     parser.add_argument("-ps", "--partitioning_size", type=int, default=None, help="Size of equal-length partitions if partitioning_method = 'equal'.")
@@ -198,15 +220,15 @@ Examples:
 
     args = parser.parse_args()
     # Error messages
-    if not args.input_file and not args.GB_input:
-        parser.error("You must provide either --input_file or --GB_input.")
+    if not args.input_file and not args.CSV_input:
+        parser.error("You must provide either --input_file or --CSV_input.")
     if not args.output_file:
         print("output_file was not provided.")
         return
 
     # prepDyn
     prepDyn(input_file=args.input_file,
-            GB_input=args.GB_input,
+            CSV_input=args.CSV_input,
             input_format=args.input_format,
             MSA=args.MSA,
             output_file=args.output_file,

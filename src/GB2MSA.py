@@ -111,13 +111,13 @@ def parse_mismatch_rate(value):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="GB2MSA downloads sequences from GenBank and performs multiple sequence alignment using MAFFT. If two or more fragments of the same gene are specified in one CSV cell using slash delimiters (e.g. MT893619/MT895696/MT895697), overlapping fragments are merged and the space between non-overlapping fragments is identified as missing data (?).",
+        description="GB2MSA loads sequences from GenBank accessions and/or local sequence files listed in a CSV/TSV table and performs multiple sequence alignment using MAFFT. GenBank multi-amplicons may use slash delimiters (e.g. MT893619/MT895696/MT895697) or pipe delimiters (e.g. MT893619|MT895696|MT895697), while local multi-amplicons use pipe delimiters (e.g. frag1.fasta|frag2.fasta). Overlapping fragments are merged and the space between non-overlapping fragments is identified as missing data (?).",
         formatter_class=argparse.RawTextHelpFormatter,
         epilog="""\
-Example:  python GB2MSA.py --input_file input.csv --output_prefix myoutput --delimiter , --write_names T --log T --orphan_threshold 10 --multi_amplicon_min_overlap 10 --multi_amplicon_mismatch_rate 0.05 --multi_amplicon_action trim
+Example:  python GB2MSA.py --CSV_input input.csv --output_prefix myoutput --delimiter , --write_names T --log T --orphan_threshold 10 --multi_amplicon_min_overlap 10 --multi_amplicon_mismatch_rate 0.05 --multi_amplicon_action trim
 """)
 
-    parser.add_argument("-i", "--input_file", type=str, required=True, help="Path to CSV/TSV file with GenBank accession numbers. Each cell may contain one accession or multiple slash-delimited accessions for the same locus.")
+    parser.add_argument("-i", "-csv", "--CSV_input", dest="CSV_input", type=str, required=True, help="Path to CSV/TSV file with GenBank accession numbers and/or local sequence-file paths. Each cell may contain one accession, multiple slash- or pipe-delimited GenBank accessions, one local file path, or multiple pipe-delimited local file paths for the same locus.")
     parser.add_argument("-o", "--output_prefix", type=str, required=False, default=None, help="Path (including prefix, if desirable) for output FASTA files.")
     parser.add_argument("-d", "--delimiter", default=",", type=str, required=False, help="Delimiter used in the input file (default: ',').")
     parser.add_argument("-w", "--write_names", type=str2bool, default=True, required=False, help="Write sequence names in a separate file, which can be used as input data in POY/PhyG to select taxon sample (default: True).")
@@ -133,7 +133,7 @@ Example:  python GB2MSA.py --input_file input.csv --output_prefix myoutput --del
         return
 
     GB2MSA(
-        input_file=args.input_file,
+        input_file=args.CSV_input,
         output_prefix=args.output_prefix,
         delimiter=args.delimiter,
         write_names=args.write_names,

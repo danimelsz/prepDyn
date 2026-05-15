@@ -53,7 +53,7 @@ p <- ggplot(df, aes(x = n_partitions, y = prepDyn_CPU_time, color = group)) +
   geom_line() +
   geom_point() +
   labs(title = "",
-       x = "\nNo. partitions (log)",
+       x = "\nNo. partitions",
        y = "CPU time (s) for preprocessing (log)\n",
        color = "No. leaves × No. nucleotides") +
   theme_classic() +
@@ -268,7 +268,7 @@ p <- ggplot(subset_df, aes(x = n_partitions, y = cost)) +
   ) +
   labs(
     x = "\nNo. partitions",
-    y = "Parsimony score\n"
+    y = "Tree cost\n"
   ) +
   theme_classic()
 p
