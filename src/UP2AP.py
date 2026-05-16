@@ -87,17 +87,29 @@ from Bio.SeqRecord import SeqRecord
 # MAIN #
 ########
 
+def str2bool(v):
+    if isinstance(v, bool):
+       return v
+    if v.lower() in ('yes', 'true', 't', '1'):
+        return True
+    elif v.lower() in ('no', 'false', 'f', '0'):
+        return False
+    else:
+        raise argparse.ArgumentTypeError('Boolean value expected.')
+
 def main():
     parser = argparse.ArgumentParser(
         description="Convert unaligned sequences containing pound signs '#' or '?' into aligned sequences.",
         formatter_class=argparse.RawTextHelpFormatter,
         epilog="""\
 Examples: python UP2AP.py -i aln.fas -o aln_updated.fas -k
+          python UP2AP.py -i aln.fas -o aln_updated.fas -k True
+          python UP2AP.py -i aln.fas -o aln_updated.fas -k False
 """)
     
     parser.add_argument("-i", "--input_fasta", type=str, required=True, help="Path to FASTA input of unaligned sequences containing pound signs.", default=None)
     parser.add_argument("-o", "--output_fasta", type=str, required=False, help="Path to FASTA output of aligned sequences containing pound signs.", default=None)     
-    parser.add_argument("-k", "--keep_unusual", action="store_true", help="Keep the pound signs (#) and question marks (?) in the output. Default is False.")
+    parser.add_argument("-k", "--keep_unusual", nargs="?", const=True, default=False, type=str2bool, help="Keep the pound signs (#) and question marks (?) in the output. Accepts flag-only, True, or False. Default is False.")
 
     args = parser.parse_args()
     if not args.output_fasta:

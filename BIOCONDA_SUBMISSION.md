@@ -4,15 +4,12 @@
 
 You need to tag your current code as a release version. This allows Bioconda to fetch the source.
 
-```bash
-git tag -a v0.4.0 -m "Release version 0.4.0"
-git push origin v0.4.0
-```
+The current repository HEAD is tagged as `v0.5.0`. If you need to recreate or move forward with a new release, update the version in `setup.py` first and then tag it.
 
 Create the release on GitHub:
-- Go to https://github.com/dnakamuraz/B3_PrepDyn/releases
+- Go to https://github.com/danimelsz/PrepDyn/releases
 - Click "Draft a new release"
-- Set tag to `v0.4.0`
+- Set tag to `v0.5.0`
 - Add release title and description
 - Publish the release
 
@@ -22,23 +19,23 @@ Once the release is created, compute the SHA256 hash of the source archive:
 
 ```bash
 # Download the archive
-curl -L https://github.com/dnakamuraz/B3_PrepDyn/archive/refs/tags/v0.4.0.tar.gz -o prepdyn-0.4.0.tar.gz
+curl -L https://github.com/danimelsz/PrepDyn/archive/refs/tags/v0.5.0.tar.gz -o prepdyn-0.5.0.tar.gz
 
 # Compute SHA256
-sha256sum prepdyn-0.4.0.tar.gz
+sha256sum prepdyn-0.5.0.tar.gz
 # or on macOS
-shasum -a 256 prepdyn-0.4.0.tar.gz
+shasum -a 256 prepdyn-0.5.0.tar.gz
 ```
 
-Copy the hash value - you'll need it for the meta.yaml file.
+Copy the hash value if you want to switch the recipe from `git_url`/`git_rev` to a release tarball URL.
 
 ## Step 3: Update meta.yaml with SHA256
 
-Replace the `{{ environ['SHA256'] }}` placeholder with the actual SHA256 hash in the bioconda_recipe_meta.yaml file.
+If you prefer a tarball-based recipe instead of the included `git_url`/`git_rev` recipe, replace the source block with:
 
 ```yaml
 source:
-  url: https://github.com/dnakamuraz/B3_PrepDyn/archive/refs/tags/v{{ version }}.tar.gz
+  url: https://github.com/danimelsz/PrepDyn/archive/refs/tags/v{{ version }}.tar.gz
   sha256: <YOUR_SHA256_HASH_HERE>
 ```
 
@@ -59,7 +56,7 @@ source:
 mkdir -p recipes/prepdyn
 
 # Copy the meta.yaml file
-cp ../B3_PrepDyn/bioconda_recipe_meta.yaml recipes/prepdyn/meta.yaml
+cp ../B3_PrepDyn/GitHub/recipes/prepdyn/meta.yaml recipes/prepdyn/meta.yaml
 ```
 
 ## Step 6: Test the Recipe Locally (Optional but Recommended)
