@@ -9,13 +9,37 @@
 
 In dynamic homology, data should be preprocessed to distinguish differences in sequence length resulting from missing data or insertion-deletion events to avoid grouping from artifacts. However, previous empirical studies using POY and PhyG manually preprocessed data with varying approaches. Here we present **prepDyn**, a collection of Python scripts to facilitate the preprocessing of input sequences to POY/PhyG. The main script `prepDyn.py` comprises four steps: (1) data collection from GenBank, (2) trimming, (3) identification of missing data, and (4) partitioning.
 
-Copyright (C) Daniel Y. M. Nakamura 2025
+Copyright (C) Daniel Y. M. Nakamura 2026
 
 ## Installation
 
+### Conda
+
+The easiest way to install **prepDyn** is creating a new environment in Conda:
+
+```bash
+conda create -n prepdyn -c dnakamuraz -c bioconda -c conda-forge prepdyn
+```
+
+Keep it updated:
+
+```bash
+conda update -c dnakamuraz prepdyn
+```
+
+### Docker
+
+You can also run **prepDyn** inside a container with Docker. First, pull the published image from GitHub Container Registry (GHCR):
+
+```bash
+docker pull ghcr.io/dnakamuraz/prepdyn:latest
+```
+
+If you want to keep it updated, just pull it again. 
+
 ### Manual installation
 
-The two dependencies that should be installed beforehand by the user are:
+If you prefer to install all dependencies manually, the two dependencies that should be installed are:
 - Python v. 3.10.9 (or newer), including *argparse*, *ast*, *csv*, *importlib*, *re*, *StringIO*, *subprocess*, *sys*, *tempfile*, and *time*, which are usually part of recent versions of Python.
 - MAFFT v. 7.5.2 (or newer), installed in $PATH as 'mafft'.
 
@@ -47,20 +71,6 @@ Finally, clone the **prepDyn** repository using the command:
 
 ```
 git clone https://github.com/dnakamuraz/prepDyn.git
-```
-
-### Docker
-
-You can also run **prepDyn** with Docker. First, pull the published image from GitHub Container Registry (GHCR):
-
-```bash
-docker pull ghcr.io/dnakamuraz/prepdyn:latest
-```
-
-Check the images available in Docker:
-
-```bash
-docker images
 ```
 
 ## Usage

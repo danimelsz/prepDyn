@@ -81,10 +81,83 @@ import sys
 import tempfile
 from termcolor import colored
 import time
+from collections import Counter, defaultdict
 
 #######################
 # AUXILIARY FUNCTIONS #
 #######################
+
+def read_delimited_rows(input_file, delimiter=",", encodings=None):
+    """
+    Read a CSV/TSV-style table using a small set of encoding fallbacks.
+
+    UTF-8 remains the default, but some spreadsheets exported on older systems
+    may use legacy single-byte encodings.
+    """
+    encodings = encodings or ("utf-8", "utf-8-sig", "latin-1", "mac_roman")
+    last_error = None
+
+    for encoding in encodings:
+        try:
+            with open(input_file, newline="", encoding=encoding) as file:
+                reader = csv.reader(file, delimiter=delimiter)
+                rows = list(reader)
+            if encoding not in ("utf-8", "utf-8-sig"):
+                print(f"Warning: {input_file} was decoded using fallback encoding '{encoding}'.")
+            return rows
+        except UnicodeDecodeError as exc:
+            last_error = exc
+
+    raise UnicodeDecodeError(
+        last_error.encoding,
+        last_error.object,
+        last_error.start,
+        last_error.end,
+        f"Could not decode {input_file} using encodings: {', '.join(encodings)}"
+    )
+
+def report_duplicate_genbank_accessions(rows, csv_dir):
+    """
+    Inspect CSV/TSV cells before any downloads and report duplicated GenBank accessions.
+    """
+    if not rows or len(rows) < 2:
+        return
+
+    header = rows[0]
+    accession_counts = Counter()
+    accession_locations = defaultdict(list)
+
+    for row_idx, row in enumerate(rows[1:], start=2):
+        if not row:
+            continue
+        sample_name = row[0].strip() if row[0].strip() else f"row_{row_idx}"
+        for col_idx, cell in enumerate(row[1:], start=1):
+            cell = cell.strip()
+            if not cell or cell.upper() == "NA" or cell == "-":
+                continue
+
+            gene_name = header[col_idx].strip() if col_idx < len(header) and header[col_idx].strip() else f"column_{col_idx + 1}"
+            try:
+                sources = _parse_cell_sources(cell, csv_dir)
+            except FileNotFoundError:
+                # Defer local path validation errors to the normal workflow.
+                continue
+
+            for source in sources:
+                if source["type"] != "genbank":
+                    continue
+                accession = source["label"]
+                accession_counts[accession] += 1
+                accession_locations[accession].append(f"{sample_name}/{gene_name}")
+
+    duplicated = sorted(acc for acc, count in accession_counts.items() if count > 1)
+    if not duplicated:
+        return
+
+    print("Warning: duplicated GenBank accession numbers were found in the CSV input:")
+    for accession in duplicated:
+        locations = ", ".join(accession_locations[accession])
+        print(f"  - {accession} ({accession_counts[accession]} occurrences): {locations}")
 
 # Function 1. Visualize colored alignments
 # Define colors for each nucleotide (case insensitive)
@@ -678,10 +751,9 @@ def GB2MSA_1(input_file, output_prefix, delimiter=',', write_names=True, multi_a
     """
     csv_dir = os.path.dirname(os.path.abspath(input_file)) or os.getcwd()
 
-    # Open the input CSV/TSV file
-    with open(input_file, newline='') as file:
-        reader = csv.reader(file, delimiter=delimiter)
-        rows = list(reader)
+    # Open the input CSV/TSV file with common spreadsheet encoding fallbacks.
+    rows = read_delimited_rows(input_file, delimiter=delimiter)
+    report_duplicate_genbank_accessions(rows, csv_dir)
 
     # Replace spaces in sequence names with underscores
     sequence_names = [row[0].replace(" ", "_") for row in rows[1:]]
@@ -3328,8 +3400,22 @@ def prepDyn(input_file=None,
                     gene_specific_prefix_base = gene_name_part
 
                 specific_output_prefix_for_recursion = os.path.join(current_output_dir, gene_specific_prefix_base)
-                alignment = AlignIO.read(file_path_from_gb2msa, "fasta")
-                alignment_dict = {record.id: str(record.seq) for record in alignment}
+                try:
+                    alignment = AlignIO.read(file_path_from_gb2msa, "fasta")
+                    alignment_dict = {record.id: str(record.seq) for record in alignment}
+                except ValueError as e:
+                    if "Sequences must all be the same length" in str(e):
+                        # Read sequences and pad shorter ones with gaps
+                        from Bio import SeqIO
+                        sequences = list(SeqIO.parse(file_path_from_gb2msa, "fasta"))
+                        max_length = max(len(record.seq) for record in sequences)
+                        alignment_dict = {}
+                        for record in sequences:
+                            seq_str = str(record.seq)
+                            padded_seq = seq_str + "-" * (max_length - len(seq_str))
+                            alignment_dict[record.id] = padded_seq
+                    else:
+                        raise
                 _all_sequence_ids.update(alignment_dict.keys())
                 _prepDyn_recursive(input_val=alignment_dict,
                                 CSV_input=None, input_format="dict", MSA=MSA,
@@ -3379,13 +3465,41 @@ def prepDyn(input_file=None,
                             mafft_result = subprocess.run(["mafft", "--auto", tmp_in_path], capture_output=True, text=True, check=False)
                             if mafft_result.returncode != 0: raise RuntimeError(f"MAFFT alignment failed for {file_name}.")
                             with open(tmp_out_path, "w") as f_out: f_out.write(mafft_result.stdout)
-                            current_file_alignment = {record.id: str(record.seq) for record in AlignIO.read(tmp_out_path, "fasta")}
+                            try:
+                                current_file_alignment = {record.id: str(record.seq) for record in AlignIO.read(tmp_out_path, "fasta")}
+                            except ValueError as e:
+                                if "Sequences must all be the same length" in str(e):
+                                    # Read sequences and pad shorter ones with gaps
+                                    from Bio import SeqIO
+                                    sequences = list(SeqIO.parse(tmp_out_path, "fasta"))
+                                    max_length = max(len(record.seq) for record in sequences)
+                                    current_file_alignment = {}
+                                    for record in sequences:
+                                        seq_str = str(record.seq)
+                                        padded_seq = seq_str + "-" * (max_length - len(seq_str))
+                                        current_file_alignment[record.id] = padded_seq
+                                else:
+                                    raise
                         finally:
                             if os.path.exists(tmp_in_path): os.remove(tmp_in_path)
                             if os.path.exists(tmp_out_path): os.remove(tmp_out_path)
                     else:
-                        alignment_temp = AlignIO.read(file_path, input_format)
-                        current_file_alignment = {record.id: str(record.seq) for record in alignment_temp}
+                        try:
+                            alignment_temp = AlignIO.read(file_path, input_format)
+                            current_file_alignment = {record.id: str(record.seq) for record in alignment_temp}
+                        except ValueError as e:
+                            if "Sequences must all be the same length" in str(e):
+                                # Read sequences and pad shorter ones with gaps
+                                from Bio import SeqIO
+                                sequences = list(SeqIO.parse(file_path, input_format))
+                                max_length = max(len(record.seq) for record in sequences)
+                                current_file_alignment = {}
+                                for record in sequences:
+                                    seq_str = str(record.seq)
+                                    padded_seq = seq_str + "-" * (max_length - len(seq_str))
+                                    current_file_alignment[record.id] = padded_seq
+                            else:
+                                raise
 
                     if current_file_alignment:
                         _all_sequence_ids.update(current_file_alignment.keys())
@@ -3421,15 +3535,52 @@ def prepDyn(input_file=None,
                     mafft_result = subprocess.run(["mafft", "--auto", tmp_in_path], capture_output=True, text=True, check=False)
                     if mafft_result.returncode != 0: raise RuntimeError(f"MAFFT alignment failed for {os.path.basename(input_val)}.")
                     with open(tmp_out_path, "w") as f_out: f_out.write(mafft_result.stdout)
-                    alignment_obj = AlignIO.read(tmp_out_path, "fasta")
+                    try:
+                        alignment_obj = AlignIO.read(tmp_out_path, "fasta")
+                    except ValueError as e:
+                        if "Sequences must all be the same length" in str(e):
+                            # Read sequences and pad shorter ones with gaps
+                            from Bio import SeqIO
+                            sequences = list(SeqIO.parse(tmp_out_path, "fasta"))
+                            max_length = max(len(record.seq) for record in sequences)
+                            alignment_dict_padded = {}
+                            for record in sequences:
+                                seq_str = str(record.seq)
+                                padded_seq = seq_str + "-" * (max_length - len(seq_str))
+                                alignment_dict_padded[record.id] = padded_seq
+                            alignment = alignment_dict_padded
+                            _all_sequence_ids.update(alignment.keys())
+                            alignment_obj = None
+                        else:
+                            raise
                 finally:
                     if os.path.exists(tmp_in_path): os.remove(tmp_in_path)
                     if os.path.exists(tmp_out_path): os.remove(tmp_out_path)
+                
+                if alignment_obj is not None:
+                    alignment = {record.id: str(record.seq) for record in alignment_obj}
+                    _all_sequence_ids.update(alignment.keys())
             else:
-                alignment_obj = AlignIO.read(input_val, input_format)
-            
-            alignment = {record.id: str(record.seq) for record in alignment_obj}
-            _all_sequence_ids.update(alignment.keys())
+                try:
+                    alignment_obj = AlignIO.read(input_val, input_format)
+                except ValueError as e:
+                    if "Sequences must all be the same length" in str(e):
+                        # Read sequences and pad shorter ones with gaps
+                        from Bio import SeqIO
+                        sequences = list(SeqIO.parse(input_val, input_format))
+                        max_length = max(len(record.seq) for record in sequences)
+                        alignment_dict_padded = {}
+                        for record in sequences:
+                            seq_str = str(record.seq)
+                            padded_seq = seq_str + "-" * (max_length - len(seq_str))
+                            alignment_dict_padded[record.id] = padded_seq
+                        alignment = alignment_dict_padded
+                        _all_sequence_ids.update(alignment.keys())
+                    else:
+                        raise
+                else:
+                    alignment = {record.id: str(record.seq) for record in alignment_obj}
+                    _all_sequence_ids.update(alignment.keys())
         else:
             if isinstance(input_val, str):
                 raise FileNotFoundError(
