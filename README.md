@@ -211,9 +211,9 @@ if analyzing the mitochondrial H1 region containing both 12S and 16S genes, you 
 </details>
 
 <details>
-<summary>Why should I annotate mitogenomes beforehand to avoid orthology problems?</summary>
+<summary>Why should I annotate mitogenomes?</summary>
 
-Mitochondrial genomes, especially in organisms with rearranged gene orders, can cause serious orthology assignment problems if not properly annotated. When sequences from multiple species are downloaded from GenBank and aligned, gene order rearrangements can lead to misalignment of non-orthologous sequences. Therefore, before running **prepDyn**, annotate mitogenomes and split genes that will be used as input (i.e. one input FASTA file for each gene specified in CSV as local files instead of specifying a GenBank accession number of a whole mitogenome).
+Mitochondrial genomes, especially in organisms with rearranged gene orders, can cause serious orthology assignment problems if not properly annotated. When sequences from multiple species are downloaded from GenBank and aligned, gene order rearrangements can lead to misalignment of non-orthologous sequences. Therefore, before running **prepDyn**, annotate mitogenomes and split genes that will be used as input (i.e. one input FASTA file for each gene specified in CSV as local files instead of specifying a GenBank accession number of a whole mitogenome). Only include sequences from the same gene in the same column in the input CSV file.
 
 Proper annotation ensures that orthologous sequences are correctly identified and aligned, resulting in more reliable phylogenetic inferences.
 
