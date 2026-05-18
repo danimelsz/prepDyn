@@ -127,6 +127,21 @@ Finding the lowest-cost tree from unaligned sequences is NP-hard, so empirical a
 </details>
 
 <details>
+<summary>What do the different output files mean?</summary>
+
+**prepDyn** generates multiple output files for each gene or dataset. Understanding these files is essential for downstream analyses:
+
+- **output_*.fasta**: Unaligned sequences. These are the raw sequences extracted from GenBank or provided as input, before any alignment or preprocessing. Use these if you plan to perform your own alignment.
+
+- **output_*_aligned_GB2MSA.fasta**: Aligned but not preprocessed sequences. These sequences have been aligned using MAFFT during the GB2MSA step, but no preprocessing has been applied yet. They may contain flanking gaps, orphan nucleotides, or internal missing data that need to be addressed.
+
+- **output_*_aligned_preprocessed.fasta**: Fully preprocessed sequences. These are the final output files after all preprocessing steps have been completed, including trimming of flanking invariants, removal/realignment of orphan nucleotides, correction of internal missing data, and identification of gaps. These files are ready for downstream phylogenetic analyses in POY/PhyG or other programs.
+
+- **output_*_log.txt**: Log file containing a summary of preprocessing steps applied to the alignment, including the number of sequences, alignment length before and after each step, and any warnings or issues encountered.
+
+</details>
+
+<details>
 <summary>In addition to POY/PhyG, can prepDyn be used to preprocess input data for other phylogenetic programs?</summary>
 
 Yes. If partitioning is skipped, **prepDyn** can still preprocess DNA sequences for other phylogenetic programs. The Step 3 is particularly useful to identify missing data and avoid downstream problems in software that treat gaps as a fifth character-state (e.g., TNT).
@@ -183,5 +198,23 @@ c. Iterative growth: It enters a loop where it looks strictly at the outermost l
 
 Note that the length of contiguous gaps adjacent to contiguous nucleotides are considered in `orphan_method integer` but not in `orphan_method adaptive`.
 
+</details>
+
+<details>
+<summary>Why should GenBank accession numbers be sorted correctly when specifying multiple genes in the same CSV cell?</summary>
+
+We recommend only specifying a single gene in each column in the CSV input file. However, 
+if analyzing the mitochondrial H1 region containing both 12S and 16S genes, you should always list them in the same order (e.g., "12S_accession/16S_accession") for all sequences in the CSV. If some sequences have them as "12S/16S" while others have "16S/12S", the sequences will be misaligned, leading to incorrect orthology assignments and biased phylogenetic results.
+
+**Recommendation**: Before creating your CSV input file, verify the gene order in your GenBank records and sort the accession numbers consistently across all rows. Use a consistent delimiter (either `/` or `|`) and maintain the same gene order for the entire dataset.
+
+</details>
+
+<details>
+<summary>Why should I annotate mitogenomes beforehand to avoid orthology problems?</summary>
+
+Mitochondrial genomes, especially in organisms with rearranged gene orders, can cause serious orthology assignment problems if not properly annotated. When sequences from multiple species are downloaded from GenBank and aligned, gene order rearrangements can lead to misalignment of non-orthologous sequences. Therefore, before running **prepDyn**, annotate mitogenomes and split genes that will be used as input (i.e. one input FASTA file for each gene specified in CSV as local files instead of specifying a GenBank accession number of a whole mitogenome).
+
+Proper annotation ensures that orthologous sequences are correctly identified and aligned, resulting in more reliable phylogenetic inferences.
 
 </details>
