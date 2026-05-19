@@ -39,9 +39,10 @@ If you want to keep it updated, just pull it again.
 
 ### Manual installation
 
-If you prefer to install all dependencies manually, the two dependencies that should be installed are:
+If you prefer to install all dependencies manually, the external dependencies that should be installed are:
 - Python v. 3.10.9 (or newer), including *argparse*, *ast*, *csv*, *importlib*, *re*, *StringIO*, *subprocess*, *sys*, *tempfile*, and *time*, which are usually part of recent versions of Python.
-- MAFFT v. 7.5.2 (or newer), installed in $PATH as 'mafft'.
+- MAFFT v. 7.5.2 (or newer), installed in $PATH as 'mafft'. This is the default aligner.
+- Optionally, ClustalW installed in $PATH as 'clustalw', if you want to run `--aligner clustalw`.
 
 ```
 # Create a conda environmnt called 'prepdyn'
@@ -50,6 +51,9 @@ conda create -n prepdyn python=3.10 --yes
 # Inside the newly created environment, install 'mafft'
 conda activate prepdyn
 conda install bioconda::mafft
+
+# Optional: install ClustalW
+conda install bioconda::clustalw
 ```
 
 Other dependencies are Python modules that will be automatically installed by **prepDyn** when you run it for the first time:
@@ -133,7 +137,7 @@ Finding the lowest-cost tree from unaligned sequences is NP-hard, so empirical a
 
 - **output_*.fasta**: Unaligned sequences. These are the raw sequences extracted from GenBank or provided as input, before any alignment or preprocessing. Use these if you plan to perform your own alignment.
 
-- **output_*_aligned_GB2MSA.fasta**: Aligned but not preprocessed sequences. These sequences have been aligned using MAFFT during the GB2MSA step, but no preprocessing has been applied yet. They may contain flanking gaps, orphan nucleotides, or internal missing data that need to be addressed.
+- **output_*_aligned_GB2MSA.fasta**: Aligned but not preprocessed sequences. These sequences have been aligned using the selected aligner during the GB2MSA step, but no preprocessing has been applied yet. They may contain flanking gaps, orphan nucleotides, or internal missing data that need to be addressed.
 
 - **output_*_aligned_preprocessed.fasta**: Fully preprocessed sequences. These are the final output files after all preprocessing steps have been completed, including trimming of flanking invariants, removal/realignment of orphan nucleotides, correction of internal missing data, and identification of gaps. These files are ready for downstream phylogenetic analyses in POY/PhyG or other programs.
 

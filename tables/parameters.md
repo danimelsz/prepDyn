@@ -11,6 +11,7 @@ List of parameters in prepDyn scripts. Parameters can be either specified with l
 | `output_format` or `of`             | `str`                 | `"fasta"`        | Output alignment format. |
 | `log` or `l`                        | `bool`                | `True`           | Write a time log. |
 | `MSA` or `msa`                      | `bool`                | `False`          | Perform a multiple sequence alignment when `input_file` contains unaligned sequences. Ignored if `CSV_input` is used. |
+| `aligner` or `a`                    | `str`                 | `"mafft"`        | Multiple sequence aligner to use when alignment is performed: `mafft` or `clustalw`. Install ClustalW with `conda install bioconda::clustalw`. |
 | `sequence_names` or `s`             | `bool`                | `True`           | Write a file with sequence names. Useful for taxon sampling in POY/PhyG. |
 | `multi_amplicon_min_overlap` or `mo`| `int`                 | `10`             | Minimum overlap length required to merge overlapping multi-amplicons downloaded from GenBank. |
 | `multi_amplicon_mismatch_rate` or `mr` | `float`            | `0.05`           | Maximum mismatch rate allowed when merging overlapping multi-amplicons from GenBank. |
@@ -42,6 +43,7 @@ List of parameters in prepDyn scripts. Parameters can be either specified with l
 | `write_names` or `w`                     | `bool`   | `True`      | Write sequence names in a separate file for taxon sampling in POY/PhyG. |
 | `log` or `l`                             | `bool`   | `True`      | Write wall and CPU time to a log file. |
 | `orphan_threshold` or `ot`               | `int`    | `10`        | Threshold used to clean orphan nucleotides. |
+| `aligner` or `a`                         | `str`    | `"mafft"`   | Multiple sequence aligner to use: `mafft` or `clustalw`. Install ClustalW with `conda install bioconda::clustalw`. |
 | `multi_amplicon_min_overlap` or `mo`     | `int`    | `10`        | Minimum overlap length required to merge overlapping multi-amplicons. |
 | `multi_amplicon_mismatch_rate` or `mr`   | `float`  | `0.05`      | Maximum mismatch rate allowed when merging overlapping multi-amplicons. |
 | `multi_amplicon_action` or `maa`         | `str`    | `"trim"`    | How to handle overlapping multi-amplicons: `trim` removes one overlapping copy, and `consensus` replaces the overlap with IUPAC consensus nucleotides. |

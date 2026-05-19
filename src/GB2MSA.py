@@ -111,10 +111,10 @@ def parse_mismatch_rate(value):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="GB2MSA loads sequences from GenBank accessions and/or local sequence files listed in a CSV/TSV table and performs multiple sequence alignment using MAFFT. GenBank multi-amplicons may use slash delimiters (e.g. MT893619/MT895696/MT895697) or pipe delimiters (e.g. MT893619|MT895696|MT895697), while local multi-amplicons use pipe delimiters (e.g. frag1.fasta|frag2.fasta). Overlapping fragments are merged and the space between non-overlapping fragments is identified as missing data (?).",
+        description="GB2MSA loads sequences from GenBank accessions and/or local sequence files listed in a CSV/TSV table and performs multiple sequence alignment using MAFFT or ClustalW. GenBank multi-amplicons may use slash delimiters (e.g. MT893619/MT895696/MT895697) or pipe delimiters (e.g. MT893619|MT895696|MT895697), while local multi-amplicons use pipe delimiters (e.g. frag1.fasta|frag2.fasta). Overlapping fragments are merged and the space between non-overlapping fragments is identified as missing data (?).",
         formatter_class=argparse.RawTextHelpFormatter,
         epilog="""\
-Example:  python GB2MSA.py --CSV_input input.csv --output_prefix myoutput --delimiter , --write_names T --log T --orphan_threshold 10 --multi_amplicon_min_overlap 10 --multi_amplicon_mismatch_rate 0.05 --multi_amplicon_action trim
+Example:  python GB2MSA.py --CSV_input input.csv --output_prefix myoutput --delimiter , --write_names T --log T --orphan_threshold 10 --multi_amplicon_min_overlap 10 --multi_amplicon_mismatch_rate 0.05 --multi_amplicon_action trim --aligner mafft
 """)
 
     parser.add_argument("-i", "-csv", "--CSV_input", dest="CSV_input", type=str, required=True, help="Path to CSV/TSV file with GenBank accession numbers and/or local sequence-file paths. Each cell may contain one accession, multiple slash- or pipe-delimited GenBank accessions, one local file path, or multiple pipe-delimited local file paths for the same locus.")
@@ -123,6 +123,7 @@ Example:  python GB2MSA.py --CSV_input input.csv --output_prefix myoutput --deli
     parser.add_argument("-w", "--write_names", type=str2bool, default=True, required=False, help="Write sequence names in a separate file, which can be used as input data in POY/PhyG to select taxon sample (default: True).")
     parser.add_argument("-l", "--log", type=str2bool, default=True, required=False, help="If set, write wall and CPU time to a log file (default: True).")
     parser.add_argument("-ot", "--orphan_threshold", type=int, default=10,  required=False, help="Threshold to clean orphan nucleotides (default: 10).")
+    parser.add_argument("-a", "--aligner", choices=["mafft", "clustalw"], default="mafft", required=False, help="Multiple sequence aligner to use: 'mafft' (default) or 'clustalw'. Install ClustalW with: conda install bioconda::clustalw")
     parser.add_argument("-mo", "--multi_amplicon_min_overlap", type=int, default=10, required=False, help="Minimum overlap length to merge multi-amplicons (default: 10).")
     parser.add_argument("-mr", "--multi_amplicon_mismatch_rate", type=parse_mismatch_rate, default=0.05, required=False, help="Maximum mismatch rate allowed when merging overlapping multi-amplicons (default: 0.05).")
     parser.add_argument("-maa", "--multi_amplicon_action", type=str, default="trim", choices=["trim", "consensus"], required=False, help="How to handle overlapping multi-amplicons: 'trim' (default) removes one overlapping copy; 'consensus' replaces the overlap with IUPAC consensus nucleotides.")
@@ -139,6 +140,7 @@ Example:  python GB2MSA.py --CSV_input input.csv --output_prefix myoutput --deli
         write_names=args.write_names,
         log=args.log,
         orphan_threshold=args.orphan_threshold,
+        aligner=args.aligner,
         multi_amplicon_min_overlap=args.multi_amplicon_min_overlap,
         multi_amplicon_mismatch_rate=args.multi_amplicon_mismatch_rate,
         multi_amplicon_action=args.multi_amplicon_action)

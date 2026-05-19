@@ -22,7 +22,7 @@ print(COPYRIGHT)
 # MODULES #
 ###########
 
-# The programs pip and mafft should be installed beforehand.
+# The programs pip and mafft/clustalw should be installed beforehand.
 # The Python modules can be automatically installed using the
 # following script. If already installed, it will load them.
 
@@ -180,12 +180,13 @@ Examples:
 """)
     # Parsing
     parser.add_argument("-i", "--input_file", help="Path to input alignment file or directory containing multiple files. Ignored if CSV_input is provided.", default=None)
-    parser.add_argument("-gb", "-csv", "--CSV_input", dest="CSV_input", help="Path to a CSV/TSV dataframe containing GenBank accession numbers and/or local sequence-file paths. If provided, sequences will be loaded, aligned with MAFFT, and then preprocessed. Cells may contain one accession, multiple slash- or pipe-delimited GenBank accessions, one local file path, or multiple pipe-delimited local file paths for the same locus. Ignored if input_file is provided.", default=None)
+    parser.add_argument("-gb", "-csv", "--CSV_input", dest="CSV_input", help="Path to a CSV/TSV dataframe containing GenBank accession numbers and/or local sequence-file paths. If provided, sequences will be loaded, aligned with the selected aligner, and then preprocessed. Cells may contain one accession, multiple slash- or pipe-delimited GenBank accessions, one local file path, or multiple pipe-delimited local file paths for the same locus. Ignored if input_file is provided.", default=None)
     parser.add_argument("-if", "--input_format", help="Input file format. Options: 'fasta' (default), 'clustal', 'phylip', or any format accepted by Biopython.", default="fasta")
     parser.add_argument("-o", "--output_file", help="Path (including prefix) for output file(s)", default=None)
     parser.add_argument("-of", "--output_format", help="Output format [default: fasta]", default="fasta")
     parser.add_argument("-l", "--log", default=True, type=str2bool, help="Write time log")
     parser.add_argument("-msa", "--MSA", default=False, type=str2bool, help="Perform a MSA. Only use it if the sequences specified in input_file are unaligned. Ignore if CSV_input is used.")
+    parser.add_argument("-a", "--aligner", choices=["mafft", "clustalw"], default="mafft", help="Multiple sequence aligner to use when alignment is performed: 'mafft' (default) or 'clustalw'. Install ClustalW with: conda install bioconda::clustalw")
     parser.add_argument("-s", "--sequence_names", default=True, type=str2bool, help="Write sequence names. Useful to manage taxon sampling in POY/PhyG.")
     parser.add_argument("-mo", "--multi_amplicon_min_overlap", type=int, default=10, help="Minimum overlap length to merge multi-amplicons when downloading from GenBank (default: 10).")
     parser.add_argument("-mr", "--multi_amplicon_mismatch_rate", type=parse_mismatch_rate, default=0.05, help="Maximum mismatch rate allowed when merging overlapping multi-amplicons from GenBank (default: 0.05).")
@@ -232,6 +233,7 @@ Examples:
             CSV_input=args.CSV_input,
             input_format=args.input_format,
             MSA=args.MSA,
+            aligner=args.aligner,
             output_file=args.output_file,
             output_format=args.output_format,
             log=args.log,

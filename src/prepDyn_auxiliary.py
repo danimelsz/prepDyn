@@ -87,6 +87,106 @@ from collections import Counter, defaultdict
 # AUXILIARY FUNCTIONS #
 #######################
 
+def normalize_aligner(aligner):
+    aligner = (aligner or "mafft").lower().replace("-", "").replace("_", "")
+    if aligner == "mafft":
+        return "mafft"
+    if aligner == "clustalw":
+        return "clustalw"
+    raise ValueError("aligner must be 'mafft' or 'clustalw'.")
+
+def run_multiple_sequence_alignment(input_fasta, output_fasta, aligner="mafft"):
+    aligner = normalize_aligner(aligner)
+    if aligner == "mafft":
+        if shutil.which("mafft") is None:
+            raise EnvironmentError("MAFFT not found. Please install MAFFT and ensure it is in your PATH.")
+        with open(output_fasta, "w") as out_handle:
+            process = subprocess.run(
+                ["mafft", "--auto", "--quiet", input_fasta],
+                stdout=out_handle,
+                stderr=subprocess.PIPE,
+                text=True,
+                check=False
+            )
+        if process.returncode != 0:
+            raise RuntimeError(f"MAFFT failed for {input_fasta}:\n{process.stderr}")
+        return
+
+    clustalw_exe = shutil.which("clustalw") or shutil.which("clustalw2")
+    if clustalw_exe is None:
+        raise EnvironmentError(
+            "ClustalW not found. Install it with 'conda install bioconda::clustalw' "
+            "and ensure 'clustalw' is in your PATH."
+        )
+
+    original_records = list(SeqIO.parse(input_fasta, "fasta"))
+    if not original_records:
+        raise ValueError(f"No sequences found in {input_fasta}.")
+    nonempty_records = [
+        record for record in original_records
+        if any(base not in "-?" for base in str(record.seq).strip())
+    ]
+    empty_ids = {record.id for record in original_records if record.id not in {rec.id for rec in nonempty_records}}
+    if not nonempty_records:
+        raise ValueError(f"All sequences in {input_fasta} are empty or contain only gaps/missing data.")
+
+    clustal_input = input_fasta
+    clustal_output = output_fasta
+    temp_paths = []
+    if empty_ids:
+        temp_dir = os.path.dirname(output_fasta) or tempfile.gettempdir()
+        os.makedirs(temp_dir, exist_ok=True)
+        with tempfile.NamedTemporaryFile(mode="w", delete=False, dir=temp_dir, suffix=".fasta") as tmp_in:
+            SeqIO.write(nonempty_records, tmp_in, "fasta")
+            clustal_input = tmp_in.name
+        clustal_output = os.path.join(temp_dir, f"{os.path.basename(clustal_input)}_clustalw.fasta")
+        temp_paths.extend([clustal_input, clustal_output])
+
+    try:
+        if len(nonempty_records) == 1:
+            SeqIO.write(nonempty_records, clustal_output, "fasta")
+        else:
+            process = subprocess.run(
+                [
+                    clustalw_exe,
+                    f"-INFILE={clustal_input}",
+                    f"-OUTFILE={clustal_output}",
+                    "-OUTPUT=FASTA",
+                    "-QUIET",
+                ],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                check=False
+            )
+            if process.returncode != 0:
+                raise RuntimeError(
+                    f"ClustalW failed for {input_fasta}:\n{process.stderr or process.stdout}"
+                )
+
+        if empty_ids:
+            aligned_records = {record.id: record for record in SeqIO.parse(clustal_output, "fasta")}
+            aligned_length = len(next(iter(aligned_records.values())).seq)
+            restored_records = []
+            for record in original_records:
+                if record.id in empty_ids:
+                    restored_records.append(SeqRecord(Seq("-" * aligned_length), id=record.id, description=""))
+                else:
+                    restored_records.append(aligned_records[record.id])
+            SeqIO.write(restored_records, output_fasta, "fasta")
+    finally:
+        for tree_path in {
+            os.path.splitext(input_fasta)[0] + ".dnd",
+            os.path.splitext(output_fasta)[0] + ".dnd",
+            os.path.splitext(clustal_input)[0] + ".dnd",
+            os.path.splitext(clustal_output)[0] + ".dnd",
+        }:
+            if os.path.exists(tree_path):
+                os.remove(tree_path)
+        for temp_path in temp_paths:
+            if os.path.exists(temp_path):
+                os.remove(temp_path)
+
 def read_delimited_rows(input_file, delimiter=",", encodings=None):
     """
     Read a CSV/TSV-style table using a small set of encoding fallbacks.
@@ -704,10 +804,10 @@ def _build_multi_amplicon_log(requested_sources, loaded_sources, failed_sources,
 # MAIN FUNCTIONS: STEP 1. DATA COLLECTION  #
 ############################################
 
-def GB2MSA_1(input_file, output_prefix, delimiter=',', write_names=True, multi_amplicon_min_overlap=10, multi_amplicon_mismatch_rate=0.05, multi_amplicon_action="trim"):
+def GB2MSA_1(input_file, output_prefix, delimiter=',', write_names=True, multi_amplicon_min_overlap=10, multi_amplicon_mismatch_rate=0.05, multi_amplicon_action="trim", aligner="mafft"):
     """
     Loads locus sequences from GenBank accession numbers and/or local sequence files listed in a CSV/TSV
-    file and aligns them by gene using MAFFT. If two fragments of the same locus are concatenated with no overlap between them, the space
+    file and aligns them by gene using the selected aligner. If two fragments of the same locus are concatenated with no overlap between them, the space
     between them will be treaed as missing data (15 Ws will flank these blocks of missing data, which will
     be used to track these regions and be replaced with question marks in GB2MSA_2).
 
@@ -740,10 +840,13 @@ def GB2MSA_1(input_file, output_prefix, delimiter=',', write_names=True, multi_a
         If "trim", remove one copy of overlapping regions when merging multi-amplicons.
         If "consensus", keep the overlap and replace it with an IUPAC consensus string.
 
+    aligner : str, optional (default="mafft")
+        Multiple sequence aligner to use: "mafft" or "clustalw".
+
     Returns:
     --------
     aligned_files : list of str
-        List of file paths to the MAFFT-aligned FASTA files for each gene.
+        List of file paths to the aligned FASTA files for each gene.
     gb1_logs : dict
         A dictionary containing merge logs for each sequence and gene.
     gene_names : list
@@ -845,9 +948,8 @@ def GB2MSA_1(input_file, output_prefix, delimiter=',', write_names=True, multi_a
         # Define the name for the output alignment file
         aligned_file = f"{output_prefix}_{gene_name}_aligned.fasta"
 
-        # Run MAFFT on the generated FASTA file and save the alignment
-        with open(aligned_file, 'w') as aligned_out:
-            subprocess.run(["mafft", "--auto", fasta_file], stdout=aligned_out)
+        # Run the selected aligner on the generated FASTA file and save the alignment
+        run_multiple_sequence_alignment(fasta_file, aligned_file, aligner=aligner)
 
         # Append the aligned file path to the result list
         aligned_files.append(aligned_file)
@@ -866,7 +968,7 @@ def GB2MSA_2(alignment_file):
     Parameters:
     -----------
     alignment_file : str
-        Path to the MAFFT-aligned FASTA file to be processed.
+        Path to the aligned FASTA file to be processed.
     
     Returns:
     --------
@@ -2527,11 +2629,12 @@ def GB2MSA(input_file,
            multi_amplicon_min_overlap=10,
            multi_amplicon_mismatch_rate=0.05,
            multi_amplicon_action="trim",
+           aligner="mafft",
            return_gene_logs=False,
            write_run_log=True):
     """
     Complete GenBank-to-MSA pipeline:
-    1. Downloads sequences from GenBank and aligns them by gene using MAFFT.
+    1. Downloads sequences from GenBank and aligns them by gene using the selected aligner.
     2. Cleans the alignments by replacing internal missing data and removing empty columns.
     3. Applies GB2MSA_3 to replace selected gap and orphan nucleotide blocks with '?'.
     4. Applies GB2MSA_4 to replace blocks of 15 or more w/W (with or without interspersed gaps) with '?'.
@@ -2550,7 +2653,8 @@ def GB2MSA(input_file,
         write_names=write_names,
         multi_amplicon_min_overlap=multi_amplicon_min_overlap,
         multi_amplicon_mismatch_rate=multi_amplicon_mismatch_rate,
-        multi_amplicon_action=multi_amplicon_action
+        multi_amplicon_action=multi_amplicon_action,
+        aligner=aligner
     )
 
     # Step 2: Clean each aligned FASTA file
@@ -3106,6 +3210,7 @@ def prepDyn(input_file=None,
             CSV_input=None,
             input_format="fasta",
             MSA=False,
+            aligner="mafft",
             output_file=None,
             output_format="fasta",
             log=False,
@@ -3150,6 +3255,8 @@ def prepDyn(input_file=None,
         log (bool): Whether to write a log with wall-clock time. Default is False.
         sequence_names (bool): If True, writes a TXT file listing all sorted unique sequence names. Default is True.
         MSA (bool): Whether to perform MSA if input sequences specified in input_file are unaligned
+        aligner (str): Multiple sequence aligner used when alignment is performed. Options are
+                       "mafft" (default) and "clustalw".
         orphan_method (str): The trimming method. By default, trimming orphan nucleotides
                              is not performed. Options:
                             - 'percentile': trim using the 25th percentile;
@@ -3211,6 +3318,7 @@ def prepDyn(input_file=None,
     """
 
     # --- Start overall timer for the top-level call ---
+    aligner = normalize_aligner(aligner)
     overall_start_wall_time = time.time()
     overall_start_cpu_time = time.process_time()
 
@@ -3227,6 +3335,7 @@ def prepDyn(input_file=None,
         "CSV_input": CSV_input,
         "input_format": input_format,
         "MSA": MSA,
+        "aligner": aligner,
         "output_file": output_file,
         "output_format": output_format,
         "log": log,
@@ -3299,6 +3408,7 @@ def prepDyn(input_file=None,
                     multi_amplicon_min_overlap=multi_amplicon_min_overlap,
                     multi_amplicon_mismatch_rate=multi_amplicon_mismatch_rate,
                     multi_amplicon_action=multi_amplicon_action,
+                    aligner=aligner,
                     return_gene_logs=True,
                     write_run_log=False
                 )
@@ -3326,6 +3436,7 @@ def prepDyn(input_file=None,
                         CSV_input=batch_csv_input,
                         input_format=batch_input_format,
                         MSA=batch_msa,
+                        aligner=aligner,
                         output_file=batch_output_prefix,
                         output_format=output_format,
                         log=log,
@@ -3374,6 +3485,7 @@ def prepDyn(input_file=None,
                            CSV_input,
                            input_format,
                            MSA,
+                           aligner,
                            output_file, # This is crucial: the output prefix for THIS specific call
                            output_format,
                            log,
@@ -3428,6 +3540,7 @@ def prepDyn(input_file=None,
                 multi_amplicon_min_overlap=multi_amplicon_min_overlap,
                 multi_amplicon_mismatch_rate=multi_amplicon_mismatch_rate,
                 multi_amplicon_action=multi_amplicon_action,
+                aligner=aligner,
                 return_gene_logs=True,
                 write_run_log=False
             )
@@ -3461,7 +3574,7 @@ def prepDyn(input_file=None,
                         raise
                 _all_sequence_ids.update(alignment_dict.keys())
                 _prepDyn_recursive(input_val=alignment_dict,
-                                CSV_input=None, input_format="dict", MSA=MSA,
+                                CSV_input=None, input_format="dict", MSA=MSA, aligner=aligner,
                                 orphan_method=orphan_method, orphan_threshold=orphan_threshold, orphan_action=orphan_action, percentile=percentile, del_inv=del_inv, multi_amplicon_min_overlap=multi_amplicon_min_overlap, multi_amplicon_mismatch_rate=multi_amplicon_mismatch_rate, multi_amplicon_action=multi_amplicon_action,
                                 internal_method=internal_method, internal_column_ranges=internal_column_ranges, internal_leaves=internal_leaves, internal_threshold=internal_threshold,
                                 n2question=n2question, partitioning_method=partitioning_method, partitioning_round=partitioning_round, partitioning_conservative=partitioning_conservative, partitioning_max_size=partitioning_max_size, partitioning_size=partitioning_size,
@@ -3496,7 +3609,7 @@ def prepDyn(input_file=None,
                     current_file_alignment = None
                     if MSA:
                         # (MSA logic for folder input unchanged)
-                        print(f"Processing unaligned file for MAFFT: {file_path}")
+                        print(f"Processing unaligned file with {aligner}: {file_path}")
                         temp_dir = current_output_dir if current_output_dir != "." else tempfile.gettempdir()
                         os.makedirs(temp_dir, exist_ok=True)
                         with tempfile.NamedTemporaryFile(mode="w", delete=False, dir=temp_dir, suffix=f".{input_format}") as tmp_in:
@@ -3505,9 +3618,7 @@ def prepDyn(input_file=None,
                             tmp_in_path = tmp_in.name
                         tmp_out_path = os.path.join(temp_dir, f"{os.path.basename(tmp_in_path)}_aligned.fasta")
                         try:
-                            mafft_result = subprocess.run(["mafft", "--auto", tmp_in_path], capture_output=True, text=True, check=False)
-                            if mafft_result.returncode != 0: raise RuntimeError(f"MAFFT alignment failed for {file_name}.")
-                            with open(tmp_out_path, "w") as f_out: f_out.write(mafft_result.stdout)
+                            run_multiple_sequence_alignment(tmp_in_path, tmp_out_path, aligner=aligner)
                             try:
                                 current_file_alignment = {record.id: str(record.seq) for record in AlignIO.read(tmp_out_path, "fasta")}
                             except ValueError as e:
@@ -3546,7 +3657,7 @@ def prepDyn(input_file=None,
                     if current_file_alignment:
                         _all_sequence_ids.update(current_file_alignment.keys())
                         _prepDyn_recursive(input_val=current_file_alignment,
-                                CSV_input=None, input_format="dict", MSA=False,
+                                CSV_input=None, input_format="dict", MSA=False, aligner=aligner,
                                 orphan_method=orphan_method, orphan_threshold=orphan_threshold, orphan_action=orphan_action, percentile=percentile, del_inv=del_inv, multi_amplicon_min_overlap=multi_amplicon_min_overlap, multi_amplicon_mismatch_rate=multi_amplicon_mismatch_rate, multi_amplicon_action=multi_amplicon_action,
                                 internal_method=internal_method, internal_column_ranges=internal_column_ranges, internal_leaves=internal_leaves, internal_threshold=internal_threshold,
                                 n2question=n2question, partitioning_method=partitioning_method, partitioning_round=partitioning_round, partitioning_conservative=partitioning_conservative, partitioning_max_size=partitioning_max_size, partitioning_size=partitioning_size,
@@ -3574,9 +3685,7 @@ def prepDyn(input_file=None,
                     tmp_in_path = tmp_in.name
                 tmp_out_path = os.path.join(temp_dir, f"{os.path.basename(tmp_in_path)}_aligned.fasta")
                 try:
-                    mafft_result = subprocess.run(["mafft", "--auto", tmp_in_path], capture_output=True, text=True, check=False)
-                    if mafft_result.returncode != 0: raise RuntimeError(f"MAFFT alignment failed for {os.path.basename(input_val)}.")
-                    with open(tmp_out_path, "w") as f_out: f_out.write(mafft_result.stdout)
+                    run_multiple_sequence_alignment(tmp_in_path, tmp_out_path, aligner=aligner)
                     try:
                         alignment_obj = AlignIO.read(tmp_out_path, "fasta")
                     except ValueError as e:
@@ -3942,6 +4051,7 @@ def prepDyn(input_file=None,
                                                    CSV_input=CSV_input,
                                                    input_format=input_format,
                                                    MSA=MSA,
+                                                   aligner=aligner,
                                                    output_file=output_file,
                                                    output_format=output_format,
                                                    log=log,
