@@ -15,8 +15,9 @@ List of parameters in prepDyn scripts. Parameters can be either specified with l
 | `multi_amplicon_min_overlap` or `mo`| `int`                 | `10`             | Minimum overlap length required to merge overlapping multi-amplicons downloaded from GenBank. |
 | `multi_amplicon_mismatch_rate` or `mr` | `float`            | `0.05`           | Maximum mismatch rate allowed when merging overlapping multi-amplicons from GenBank. |
 | `multi_amplicon_action` or `maa`    | `str`                 | `"trim"`         | How to handle overlapping multi-amplicons from GenBank: `trim` removes one overlapping copy, and `consensus` replaces the overlap with IUPAC consensus nucleotides. |
-| `orphan_method` or `om`             | `str`                 | `None`           | Method to handle orphan nucleotides: `integer`, `percentile`, `adaptive`, or `None`. |
-| `orphan_threshold` or `ot`          | `int`                 | `10`             | Threshold used when `orphan_method='integer'`, and also the maximum dynamic threshold when `orphan_method='adaptive'`. |
+| `orphan_method` or `om`             | `str`                 | `None`           | Method to handle orphan nucleotides: `integer`, `percentile`, `adaptive`, `strict_adaptive`, or `None`. |
+| `orphan_threshold` or `ot`          | `int`                 | `10`             | Threshold used when `orphan_method='integer'`, and also the maximum dynamic threshold when `orphan_method='adaptive'` or `orphan_method='strict_adaptive'`. |
+| `orphan_limit` or `ol`              | `float`               | `0.05`           | Modification limit as a fraction of sequence length for `adaptive` and `strict_adaptive` methods (default: 0.05 = 5%). Specifies the maximum proportion of a sequence that can be trimmed or realigned. |
 | `orphan_action` or `oa`             | `str`                 | `"trim"`         | Action for orphan nucleotides: `trim` removes them, and `push` moves them adjacent to the next block iteratively. |
 | `percentile` or `op`                | `float`               | `25.0`           | Percentile used to define the orphan threshold when `orphan_method='percentile'`. |
 | `del_inv` or `di`                   | `bool`                | `True`           | Trim invariant terminal columns. |

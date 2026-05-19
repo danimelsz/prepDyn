@@ -1174,7 +1174,7 @@ def calculate_orphan_threshold_from_percentile(alignment, percentile=25, log=Fal
         
     return orphan_threshold
 
-def delete_orphan_nucleotides2(alignment, orphan_threshold, log_changes=False, orphan_action="trim", orphan_method="integer"):
+def delete_orphan_nucleotides2(alignment, orphan_threshold, log_changes=False, orphan_action="trim", orphan_method="integer", orphan_limit=0.05):
     """
     Iteratively eliminates or pushes orphan nucleotide blocks from the start and end of each sequence.
     An orphan block is a short contiguous run of nucleotides near the terminal ends separated by many gaps.
@@ -1182,10 +1182,11 @@ def delete_orphan_nucleotides2(alignment, orphan_threshold, log_changes=False, o
     Args:
         alignment (dict): {sequence_id: sequence_string}
         orphan_threshold (int): Max block length and max gap tolerance (for static methods). 
-                                Also acts as the maximum cap limit for the 'adaptive' method.
+                                Also acts as the maximum cap limit for the 'adaptive' and 'strict_adaptive' methods.
         log_changes (bool): Whether to return a log of changes made.
         orphan_action (str): Action to perform ('trim' to delete or 'push' to move adjacent to next block).
-        orphan_method (str): "integer", "percentile", or "adaptive".
+        orphan_method (str): "integer", "percentile", "adaptive", or "strict_adaptive".
+        orphan_limit (float): Modification limit as a fraction of sequence length for adaptive methods (default: 0.05 = 5%).
 
     Returns:
         dict: Cleaned alignment.
@@ -1226,23 +1227,23 @@ def delete_orphan_nucleotides2(alignment, orphan_threshold, log_changes=False, o
         return False
     # -------------------------------------------------------------------
 
-    # For tracking maximum allowed modifications in 'adaptive'
+    # For tracking maximum allowed modifications in 'adaptive' and 'strict_adaptive'
     seq_mods = {seq_id: 0 for seq_id in alignment}
-    # 5% limit with a generous baseline of 3 allowed nucleotides to move/trim for short sequences
+    # orphan_limit multiplied by sequence length, with a generous baseline of 3 allowed nucleotides for short sequences
     seq_limits = {
-        seq_id: max(3, int(0.05 * len(seq.replace('-', '').replace('?', '').replace('#', '')))) 
+        seq_id: max(3, int(orphan_limit * len(seq.replace('-', '').replace('?', '').replace('#', '')))) 
         for seq_id, seq in alignment.items()
     }
 
-    if orphan_method == "adaptive":
+    if orphan_method in ["adaptive", "strict_adaptive"]:
         current_threshold = 1
     else:
         current_threshold = orphan_threshold
 
     alignment_changed = True
     
-    # Adaptive loop stopping condition
-    while alignment_changed or (orphan_method == "adaptive" and current_threshold <= orphan_threshold):
+    # Adaptive loop stopping condition for 'adaptive' and 'strict_adaptive' modes
+    while alignment_changed or (orphan_method in ["adaptive", "strict_adaptive"] and current_threshold <= orphan_threshold):
         alignment_changed = False
 
         for seq_id, sequence in alignment.items():
@@ -1272,13 +1273,13 @@ def delete_orphan_nucleotides2(alignment, orphan_threshold, log_changes=False, o
                 made_change_right = False
 
                 # Evaluate Left side condition
-                if orphan_method == "adaptive":
-                    cond_left = (left_len <= dynamic_threshold) and (seq_mods[seq_id] + left_len <= seq_limits[seq_id])
+                if orphan_method in ["adaptive", "strict_adaptive"]:
+                    cond_left = (left_len <= dynamic_threshold) and (gap_count_left > dynamic_threshold) and (seq_mods[seq_id] + left_len <= seq_limits[seq_id])
                 else:
                     cond_left = (left_len < dynamic_threshold) and (gap_count_left > dynamic_threshold)
 
-                # APPLY REFINEMENT VETO
-                if cond_left:
+                # APPLY REFINEMENT VETO (only for strict_adaptive)
+                if cond_left and orphan_method == "strict_adaptive":
                     block_str_left = ''.join(seq_list[first_start:first_end])
                     if has_shared_homology(first_start, first_end, block_str_left, seq_id):
                         cond_left = False # Veto! Another terminal has this exact isolated block.
@@ -1303,13 +1304,13 @@ def delete_orphan_nucleotides2(alignment, orphan_threshold, log_changes=False, o
                     continue
 
                 # Evaluate Right side condition
-                if orphan_method == "adaptive":
-                    cond_right = (right_len <= dynamic_threshold) and (seq_mods[seq_id] + right_len <= seq_limits[seq_id])
+                if orphan_method in ["adaptive", "strict_adaptive"]:
+                    cond_right = (right_len <= dynamic_threshold) and (gap_count_right > dynamic_threshold) and (seq_mods[seq_id] + right_len <= seq_limits[seq_id])
                 else:
                     cond_right = (right_len < dynamic_threshold) and (gap_count_right > dynamic_threshold)
 
-                # APPLY REFINEMENT VETO
-                if cond_right:
+                # APPLY REFINEMENT VETO (only for strict_adaptive)
+                if cond_right and orphan_method == "strict_adaptive":
                     block_str_right = ''.join(seq_list[last_start:last_end])
                     if has_shared_homology(last_start, last_end, block_str_right, seq_id):
                         cond_right = False # Veto! Another terminal has this exact isolated block.
@@ -1337,7 +1338,7 @@ def delete_orphan_nucleotides2(alignment, orphan_threshold, log_changes=False, o
                 alignment_changed = True
                 alignment[seq_id] = ''.join(seq_list)
 
-        if orphan_method == "adaptive":
+        if orphan_method in ["adaptive", "strict_adaptive"]:
             if alignment_changed:
                 current_threshold = 1 # reset because merging might have created slightly larger new orphans
             else:
@@ -3072,6 +3073,7 @@ def prepDyn(input_file=None,
             # Trimming parameters
             orphan_method=None,
             orphan_threshold=10,
+            orphan_limit=0.05,
             orphan_action="trim",
             percentile=25,
             del_inv=True,
@@ -3406,7 +3408,6 @@ def prepDyn(input_file=None,
                 except ValueError as e:
                     if "Sequences must all be the same length" in str(e):
                         # Read sequences and pad shorter ones with gaps
-                        from Bio import SeqIO
                         sequences = list(SeqIO.parse(file_path_from_gb2msa, "fasta"))
                         max_length = max(len(record.seq) for record in sequences)
                         alignment_dict = {}
@@ -3470,7 +3471,6 @@ def prepDyn(input_file=None,
                             except ValueError as e:
                                 if "Sequences must all be the same length" in str(e):
                                     # Read sequences and pad shorter ones with gaps
-                                    from Bio import SeqIO
                                     sequences = list(SeqIO.parse(tmp_out_path, "fasta"))
                                     max_length = max(len(record.seq) for record in sequences)
                                     current_file_alignment = {}
@@ -3490,7 +3490,6 @@ def prepDyn(input_file=None,
                         except ValueError as e:
                             if "Sequences must all be the same length" in str(e):
                                 # Read sequences and pad shorter ones with gaps
-                                from Bio import SeqIO
                                 sequences = list(SeqIO.parse(file_path, input_format))
                                 max_length = max(len(record.seq) for record in sequences)
                                 current_file_alignment = {}
@@ -3540,7 +3539,6 @@ def prepDyn(input_file=None,
                     except ValueError as e:
                         if "Sequences must all be the same length" in str(e):
                             # Read sequences and pad shorter ones with gaps
-                            from Bio import SeqIO
                             sequences = list(SeqIO.parse(tmp_out_path, "fasta"))
                             max_length = max(len(record.seq) for record in sequences)
                             alignment_dict_padded = {}
@@ -3566,7 +3564,6 @@ def prepDyn(input_file=None,
                 except ValueError as e:
                     if "Sequences must all be the same length" in str(e):
                         # Read sequences and pad shorter ones with gaps
-                        from Bio import SeqIO
                         sequences = list(SeqIO.parse(input_val, input_format))
                         max_length = max(len(record.seq) for record in sequences)
                         alignment_dict_padded = {}
@@ -3614,14 +3611,14 @@ def prepDyn(input_file=None,
         if orphan_method == "percentile":
             orphan_threshold_val = calculate_orphan_threshold_from_percentile(alignment, percentile, terminal_only=True)
             if log:
-                alignment, orphan_log = delete_orphan_nucleotides2(alignment, orphan_threshold_val, log_changes=True, orphan_action=orphan_action, orphan_method="integer")
+                alignment, orphan_log = delete_orphan_nucleotides2(alignment, orphan_threshold_val, log_changes=True, orphan_action=orphan_action, orphan_method="integer", orphan_limit=orphan_limit)
             else:
-                alignment = delete_orphan_nucleotides2(alignment, orphan_threshold_val, orphan_action=orphan_action, orphan_method="integer")
-        elif orphan_method in ["integer", "adaptive"]:
+                alignment = delete_orphan_nucleotides2(alignment, orphan_threshold_val, orphan_action=orphan_action, orphan_method="integer", orphan_limit=orphan_limit)
+        elif orphan_method in ["integer", "adaptive", "strict_adaptive"]:
             if log:
-                alignment, orphan_log = delete_orphan_nucleotides2(alignment, orphan_threshold, log_changes=True, orphan_action=orphan_action, orphan_method=orphan_method)
+                alignment, orphan_log = delete_orphan_nucleotides2(alignment, orphan_threshold, log_changes=True, orphan_action=orphan_action, orphan_method=orphan_method, orphan_limit=orphan_limit)
             else:
-                alignment = delete_orphan_nucleotides2(alignment, orphan_threshold, orphan_action=orphan_action, orphan_method=orphan_method)
+                alignment = delete_orphan_nucleotides2(alignment, orphan_threshold, orphan_action=orphan_action, orphan_method=orphan_method, orphan_limit=orphan_limit)
 
 
         # 3.3 Replace terminal gaps with ?
