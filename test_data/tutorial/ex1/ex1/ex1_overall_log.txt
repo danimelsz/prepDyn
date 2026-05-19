@@ -1,0 +1,11 @@
+--- Overall prepDyn Batch Execution Summary ---
+Command used:
+prepDyn(CSV_input='ex1_input.csv', input_format='fasta', MSA=False, aligner='mafft', output_file='ex1', output_format='fasta', log=True, sequence_names=True, orphan_method='integer', orphan_threshold=10, orphan_action='trim', percentile=25.0, del_inv=True, multi_amplicon_min_overlap=10, multi_amplicon_mismatch_rate=0.05, multi_amplicon_action='trim', internal_column_ranges='all', internal_leaves='all', partitioning_method='all', partitioning_round='0-3', partitioning_conservative='midpoint')
+
+Partitioning methods: ['conservative', 'balanced', 'max', 'equal']
+Partitioning rounds: [0, 1, 2, 3]
+
+Total Wall-clock time: 36.69665694 seconds
+Total CPU time: 2.59460300 seconds
+
+Note: Individual run logs provide detailed information.

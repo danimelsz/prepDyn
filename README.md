@@ -160,7 +160,7 @@ Dynamic homology implemented in **POY/PhyG** is NP-hard. If sequences are too lo
 </details>
 
 <details>
-<summary>How to specify missing data and multi-amplicons in the input CSV file?</summary>
+<summary>What are multi-amplicons?</summary>
 
 In many cases, sequences are available for a few genes but not others. In this case, missing data should be indicated with the string "NA" in the CSV cell. CSV cells may contain either GenBank accession numbers or local sequence-file paths (absolute or relative), and the same table can mix both sources. For multi-amplicons, GenBank accession numbers may be delimited with `/` or `|`, while local file paths should be delimited with `|`. These multi-amplicons can partially or fully share overlapping sequences. prepDyn allows overlapping regions from one of the sequences to be deleted or compute the consensus sequence.
 
@@ -215,7 +215,7 @@ c. **Iterative growth**: It enters a loop where it looks strictly at the outermo
 </details>
 
 <details>
-<summary>Why should GenBank accession numbers be sorted correctly when specifying multiple genes in the same CSV cell?</summary>
+<summary>Can I specify more than one gene in the same column in the CSV file?</summary>
 
 We recommend only specifying a single gene in each column in the CSV input file. However, 
 if analyzing the mitochondrial H1 region containing both 12S and 16S genes, you should always list them in the same order (e.g., "12S_accession/16S_accession") for all sequences in the CSV. If some sequences have them as "12S/16S" while others have "16S/12S", the sequences will be misaligned, leading to incorrect orthology assignments and biased phylogenetic results.

@@ -5,7 +5,7 @@ List of parameters in prepDyn scripts. Parameters can be either specified with l
 | **Parameter**                       | **Type**              | **Default**      | **Description** |
 | ----------------------------------- | --------------------- | ---------------- | --------------- |
 | `input_file` or `i`                 | `str`                 | –                | Path to an input alignment file or a directory containing multiple files. Required unless `CSV_input` is provided. |
-| `CSV_input` or `csv`                | `str`                 | –                | Path to a CSV/TSV dataframe with GenBank accession numbers and/or local sequence-file paths. Required unless `input_file` is provided. Cells may contain GenBank multi-amplicons delimited by `/` or `|`. |
+| `CSV_input` or `csv`                | `str`                 | –                | Path to a CSV/TSV dataframe with GenBank accession numbers and/or local sequence-file paths. Required unless `input_file` is provided. Cells may contain GenBank multi-amplicons delimited by `/` or `\|`, optionally with manual classification markers: use `(O)` to force overlapping treatment (e.g., `MF624199(O)MF624174`) or `(N)` for non-overlapping treatment (e.g., `MF624199(N)MF624174`). Without markers, classification is automatic. |
 | `input_format` or `if`              | `str`                 | `"fasta"`        | Input format, such as `fasta`, `clustal`, `phylip`, or any format accepted by Biopython. |
 | `output_file` or `o`                | `str`                 | –                | Path or prefix for output file(s). |
 | `output_format` or `of`             | `str`                 | `"fasta"`        | Output alignment format. |

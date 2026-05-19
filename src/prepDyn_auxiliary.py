@@ -238,7 +238,7 @@ def report_duplicate_genbank_accessions(rows, csv_dir):
 
             gene_name = header[col_idx].strip() if col_idx < len(header) and header[col_idx].strip() else f"column_{col_idx + 1}"
             try:
-                sources = _parse_cell_sources(cell, csv_dir)
+                sources, _ = _parse_cell_sources(cell, csv_dir)
             except FileNotFoundError:
                 # Defer local path validation errors to the normal workflow.
                 continue
@@ -529,7 +529,42 @@ def _read_single_sequence_file(file_path):
         f"Last errors: {'; '.join(parse_errors[:3])}"
     )
 
+def _extract_manual_amplicon_classification(cell):
+    """
+    Extract manual classification marker (O) or (N) from a cell string.
+    - (O) means force overlapping treatment
+    - (N) means force non-overlapping treatment
+    - No marker means automatic classification
+    
+    Returns:
+        tuple: (cleaned_cell, classification) where classification is None, "overlapping", or "non-overlapping"
+    """
+    classification = None
+    
+    # Check for (O) marker (force overlapping)
+    if "(O)" in cell:
+        cell = cell.replace("(O)", "")
+        classification = "overlapping"
+    # Check for (N) marker (force non-overlapping)
+    elif "(N)" in cell:
+        cell = cell.replace("(N)", "")
+        classification = "non-overlapping"
+    
+    return cell.strip(), classification
+
 def _parse_cell_sources(cell, csv_dir):
+    """
+    Parse a CSV cell to extract sequence sources (local files or GenBank accessions).
+    Supports manual classification markers: (O) for overlapping, (N) for non-overlapping.
+    
+    Returns:
+        tuple: (sources_list, classification_override)
+        - sources_list: list of dicts with "type", "label", and "path" (if local)
+        - classification_override: None (automatic), "overlapping", or "non-overlapping"
+    """
+    # Extract manual classification marker if present
+    cell, classification = _extract_manual_amplicon_classification(cell)
+    
     sources = []
     for part in cell.split("|"):
         token = part.strip()
@@ -558,7 +593,7 @@ def _parse_cell_sources(cell, csv_dir):
                     "label": accession
                 })
 
-    return sources
+    return sources, classification
 
 def _iupac_consensus_char(base1, base2):
     bases1 = IUPAC_TO_BASES.get(base1.upper(), {base1.upper()})
@@ -569,11 +604,29 @@ def _iupac_consensus_char(base1, base2):
 def _build_overlap_consensus(seq_left, seq_right):
     return "".join(_iupac_consensus_char(left, right) for left, right in zip(seq_left, seq_right))
 
-def merge_overlapping_sequences(seq_list, multi_amplicon_min_overlap=10, multi_amplicon_mismatch_rate=0.05, multi_amplicon_action="trim", labels=None):
+def merge_overlapping_sequences(seq_list, multi_amplicon_min_overlap=10, multi_amplicon_mismatch_rate=0.05, multi_amplicon_action="trim", labels=None, forced_classification=None):
     """
     Tries to merge a list of sequences by identifying overlaps.
     If some sequences don't overlap, they remain separate.
     Returns merged sequences, structured merge events, and the final amplicon groups.
+    
+    Parameters:
+    -----------
+    seq_list : list
+        List of sequences to merge
+    multi_amplicon_min_overlap : int
+        Minimum overlap length to consider as overlapping
+    multi_amplicon_mismatch_rate : float
+        Maximum mismatch rate allowed in overlaps
+    multi_amplicon_action : str
+        Action for overlaps: "trim" or "consensus"
+    labels : list
+        Labels for each sequence
+    forced_classification : str or None
+        Manual override for classification:
+        - None: automatic classification based on overlap detection
+        - "overlapping": force attempt to merge sequences
+        - "non-overlapping": keep sequences separate without attempting merge
     """
     merge_log = []
     if not seq_list:
@@ -586,11 +639,31 @@ def merge_overlapping_sequences(seq_list, multi_amplicon_min_overlap=10, multi_a
     if len(labels) != len(seq_list):
         raise ValueError("labels and seq_list must have the same length.")
 
+    # If forced to non-overlapping, return sequences as-is
+    if forced_classification == "non-overlapping":
+        for idx, label in enumerate(labels):
+            merge_log.append({
+                "type": "classification_override",
+                "classification": "non-overlapping",
+                "labels": [label],
+                "reason": "Forced to non-overlapping via (N) marker in CSV"
+            })
+        return seq_list, merge_log, [[label] for label in labels]
+
     # Operate on upper case to ensure case-insensitive matching
     fragments = [
         {"seq": seq.upper(), "labels": [label]}
         for seq, label in zip(seq_list, labels)
     ]
+    
+    # If forced to overlapping, add a log entry indicating this
+    if forced_classification == "overlapping":
+        merge_log.append({
+            "type": "classification_override",
+            "classification": "overlapping",
+            "labels": labels[:],
+            "reason": "Forced to overlapping via (O) marker in CSV"
+        })
         
     merged_any = True
     while merged_any:
@@ -890,7 +963,7 @@ def GB2MSA_1(input_file, output_prefix, delimiter=',', write_names=True, multi_a
                 if cell.upper() == "NA" or not cell or cell == "-":
                     continue
 
-                sources = _parse_cell_sources(cell, csv_dir)
+                sources, amplicon_classification = _parse_cell_sources(cell, csv_dir)
                 if not sources:
                     continue
                 sequences = []
@@ -926,7 +999,8 @@ def GB2MSA_1(input_file, output_prefix, delimiter=',', write_names=True, multi_a
                     multi_amplicon_min_overlap=multi_amplicon_min_overlap,
                     multi_amplicon_mismatch_rate=multi_amplicon_mismatch_rate,
                     multi_amplicon_action=multi_amplicon_action,
-                    labels=loaded_sources
+                    labels=loaded_sources,
+                    forced_classification=amplicon_classification
                 )
 
                 gb1_logs[gene_name][seq_name] = {

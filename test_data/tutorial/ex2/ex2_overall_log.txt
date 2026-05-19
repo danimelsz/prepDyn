@@ -1,0 +1,8 @@
+--- Overall prepDyn Execution Summary ---
+Command used:
+prepDyn(input_file='./', input_format='fasta', MSA=True, aligner='mafft', output_file='./ex2', output_format='fasta', log=True, sequence_names=True, orphan_method='adaptive_2', orphan_threshold=10, orphan_action='trim', percentile=25.0, del_inv=True, multi_amplicon_min_overlap=10, multi_amplicon_mismatch_rate=0.05, multi_amplicon_action='trim', internal_method='semi', internal_column_ranges='all', internal_leaves='all', internal_threshold=15, partitioning_method='max', partitioning_round=0, partitioning_conservative='midpoint')
+
+Total Wall-clock time: 13.54765296 seconds
+Total CPU time: 0.16544500 seconds
+
+Note: Individual gene/alignment logs provide detailed information.
