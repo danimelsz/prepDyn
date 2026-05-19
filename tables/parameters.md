@@ -21,7 +21,7 @@ List of parameters in prepDyn scripts. Parameters can be either specified with l
 | `orphan_limit` or `ol`              | `float`               | `0.05`           | Modification limit as a fraction of sequence length for adaptive methods (default: 0.05 = 5%). Specifies the maximum proportion of a sequence that can be trimmed or realigned. |
 | `orphan_action` or `oa`             | `str`                 | `"trim"`         | Action for orphan nucleotides: `trim` removes them, and `push` moves them adjacent to the next block iteratively. |
 | `percentile` or `op`                | `float`               | `25.0`           | Percentile used to define the orphan threshold when `orphan_method='percentile'`. |
-| `del_inv` or `di`                   | `bool`                | `True`           | Trim invariant terminal columns. |
+| `del_inv` or `di`                   | `bool`                | `False`          | Trim invariant terminal columns. |
 | `internal_method` or `g2q`          | `str`                 | `None`           | Method to handle internal missing data: `manual`, `semi`, or `None`. |
 | `internal_column_ranges` or `g2q_c` | `list` or `str`       | `"all"`          | Column ranges in Python list format for `internal_method='manual'`. |
 | `internal_leaves` or `g2q_l`        | `str` or `list`       | `"all"`          | Sequence names to which internal missing-data handling is applied. Use `all` or a comma-separated list. |

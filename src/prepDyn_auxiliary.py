@@ -3221,7 +3221,7 @@ def prepDyn(input_file=None,
             orphan_limit=0.05,
             orphan_action="trim",
             percentile=25,
-            del_inv=True,
+            del_inv=False,
             multi_amplicon_min_overlap=10,
             multi_amplicon_mismatch_rate=0.05,
             multi_amplicon_action="trim",
@@ -3268,7 +3268,7 @@ def prepDyn(input_file=None,
         orphan_action (str): Action for orphan nucleotides. 'trim' (default) removes them. 
                              'push' moves them adjacent to the next block iteratively.
         percentile (float): Used with orphan_method = 'percentile' to define trimming threshold.
-        del_inv (bool): Whether to trim invariant terminal columns. Default is True.
+        del_inv (bool): Whether to trim invariant terminal columns. Default is False.
         multi_amplicon_min_overlap (int): Minimum overlap length to merge multi-amplicons when downloading from GenBank. Default is 10.
         multi_amplicon_mismatch_rate (float): Maximum mismatch rate allowed when merging overlapping multi-amplicons from GenBank. Default is 0.05.
         multi_amplicon_action (str): How to handle overlapping multi-amplicons. "trim" (default)

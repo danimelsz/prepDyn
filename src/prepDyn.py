@@ -198,7 +198,7 @@ Examples:
     parser.add_argument("-ol", "--orphan_limit", type=float, help="Modification limit as a fraction of sequence length for adaptive methods (default: 0.05)", default=0.05)
     parser.add_argument("-oa", "--orphan_action", type=str, help="Action for orphan nucleotides. 'trim' (default) removes them. 'push' moves them adjacent to the next block iteratively.", choices=["trim", "push"], default="trim")
     parser.add_argument("-op", "--percentile", type=float, help="Percentile of gap lengths to define the orphan threshold if orphan_method='percentile' (default: 25).", default=25.0)
-    parser.add_argument("-di", "--del_inv", default=True, type=str2bool, help="Trim invariant terminal columns (default: True)")
+    parser.add_argument("-di", "--del_inv", default=False, type=str2bool, help="Trim invariant terminal columns (default: False)")
 
     # Missing data
     parser.add_argument("-g2q", "--internal_method", help="Method to handle internal missing data: 'manual', 'semi', or 'none' (default)", default=None)
@@ -216,7 +216,7 @@ Examples:
 
     # Default
     parser.set_defaults(log=True)
-    parser.set_defaults(del_inv=True)
+    parser.set_defaults(del_inv=False)
     parser.set_defaults(msa=False)
     parser.set_defaults(sequence_names=True)
 
