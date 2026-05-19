@@ -192,9 +192,9 @@ Examples:
     parser.add_argument("-maa", "--multi_amplicon_action", type=str, default="trim", choices=["trim", "consensus"], help="How to handle overlapping multi-amplicons from GenBank: 'trim' (default) removes one overlapping copy; 'consensus' replaces the overlap with IUPAC consensus nucleotides.")
 
     # Trimming
-    parser.add_argument("-om", "--orphan_method", help="Method to trim orphan nucleotides. Options: 'none' (default), 'percentile' (define threshold via percentile), 'integer' (define threshold via integer), 'adaptive' (iteratively automates threshold), 'strict_adaptive' (adaptive but with shared homology refinement).", choices=["integer", "percentile", "adaptive", "strict_adaptive"], default=None)
-    parser.add_argument("-ot", "--orphan_threshold", type=int, help="Threshold integer if orphan_method='integer' (default: 10)", default=10)
-    parser.add_argument("-ol", "--orphan_limit", type=float, help="Modification limit as a fraction of sequence length for 'adaptive' and 'strict_adaptive' methods (default: 0.05)", default=0.05)
+    parser.add_argument("-om", "--orphan_method", help="Method to trim orphan nucleotides. Options: 'none' (default), 'percentile' (define threshold via percentile), 'integer' (define threshold via integer), 'adaptive_1' (adaptive without gap/shared-string checks), 'adaptive_2' (adaptive with gap check), 'adaptive_3' (adaptive with gap and shared-string checks).", choices=["integer", "percentile", "adaptive_1", "adaptive_2", "adaptive_3"], default=None)
+    parser.add_argument("-ot", "--orphan_threshold", type=int, help="Threshold integer if orphan_method='integer'; maximum dynamic threshold for adaptive methods (default: 10)", default=10)
+    parser.add_argument("-ol", "--orphan_limit", type=float, help="Modification limit as a fraction of sequence length for adaptive methods (default: 0.05)", default=0.05)
     parser.add_argument("-oa", "--orphan_action", type=str, help="Action for orphan nucleotides. 'trim' (default) removes them. 'push' moves them adjacent to the next block iteratively.", choices=["trim", "push"], default="trim")
     parser.add_argument("-op", "--percentile", type=float, help="Percentile of gap lengths to define the orphan threshold if orphan_method='percentile' (default: 25).", default=25.0)
     parser.add_argument("-di", "--del_inv", default=True, type=str2bool, help="Trim invariant terminal columns (default: True)")

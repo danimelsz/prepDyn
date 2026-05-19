@@ -1182,10 +1182,13 @@ def delete_orphan_nucleotides2(alignment, orphan_threshold, log_changes=False, o
     Args:
         alignment (dict): {sequence_id: sequence_string}
         orphan_threshold (int): Max block length and max gap tolerance (for static methods). 
-                                Also acts as the maximum cap limit for the 'adaptive' and 'strict_adaptive' methods.
+                                Also acts as the maximum cap limit for adaptive methods.
         log_changes (bool): Whether to return a log of changes made.
         orphan_action (str): Action to perform ('trim' to delete or 'push' to move adjacent to next block).
-        orphan_method (str): "integer", "percentile", "adaptive", or "strict_adaptive".
+        orphan_method (str): "integer", "percentile", "adaptive_1", "adaptive_2", or "adaptive_3".
+                             - adaptive_1: no gap check, no shared homology check
+                             - adaptive_2: gap check, no shared homology check
+                             - adaptive_3: gap check + shared homology check
         orphan_limit (float): Modification limit as a fraction of sequence length for adaptive methods (default: 0.05 = 5%).
 
     Returns:
@@ -1227,7 +1230,9 @@ def delete_orphan_nucleotides2(alignment, orphan_threshold, log_changes=False, o
         return False
     # -------------------------------------------------------------------
 
-    # For tracking maximum allowed modifications in 'adaptive' and 'strict_adaptive'
+    adaptive_methods = ["adaptive_1", "adaptive_2", "adaptive_3"]
+
+    # For tracking maximum allowed modifications in adaptive methods
     seq_mods = {seq_id: 0 for seq_id in alignment}
     # orphan_limit multiplied by sequence length, with a generous baseline of 3 allowed nucleotides for short sequences
     seq_limits = {
@@ -1235,15 +1240,15 @@ def delete_orphan_nucleotides2(alignment, orphan_threshold, log_changes=False, o
         for seq_id, seq in alignment.items()
     }
 
-    if orphan_method in ["adaptive", "strict_adaptive"]:
+    if orphan_method in adaptive_methods:
         current_threshold = 1
     else:
         current_threshold = orphan_threshold
 
     alignment_changed = True
     
-    # Adaptive loop stopping condition for 'adaptive' and 'strict_adaptive' modes
-    while alignment_changed or (orphan_method in ["adaptive", "strict_adaptive"] and current_threshold <= orphan_threshold):
+    # Adaptive loop stopping condition for adaptive methods
+    while alignment_changed or (orphan_method in adaptive_methods and current_threshold <= orphan_threshold):
         alignment_changed = False
 
         for seq_id, sequence in alignment.items():
@@ -1273,13 +1278,15 @@ def delete_orphan_nucleotides2(alignment, orphan_threshold, log_changes=False, o
                 made_change_right = False
 
                 # Evaluate Left side condition
-                if orphan_method in ["adaptive", "strict_adaptive"]:
+                if orphan_method == "adaptive_1":
+                    cond_left = (left_len <= dynamic_threshold) and (seq_mods[seq_id] + left_len <= seq_limits[seq_id])
+                elif orphan_method in ["adaptive_2", "adaptive_3"]:
                     cond_left = (left_len <= dynamic_threshold) and (gap_count_left > dynamic_threshold) and (seq_mods[seq_id] + left_len <= seq_limits[seq_id])
                 else:
                     cond_left = (left_len < dynamic_threshold) and (gap_count_left > dynamic_threshold)
 
-                # APPLY REFINEMENT VETO (only for strict_adaptive)
-                if cond_left and orphan_method == "strict_adaptive":
+                # APPLY REFINEMENT VETO (only for adaptive_3)
+                if cond_left and orphan_method == "adaptive_3":
                     block_str_left = ''.join(seq_list[first_start:first_end])
                     if has_shared_homology(first_start, first_end, block_str_left, seq_id):
                         cond_left = False # Veto! Another terminal has this exact isolated block.
@@ -1304,13 +1311,15 @@ def delete_orphan_nucleotides2(alignment, orphan_threshold, log_changes=False, o
                     continue
 
                 # Evaluate Right side condition
-                if orphan_method in ["adaptive", "strict_adaptive"]:
+                if orphan_method == "adaptive_1":
+                    cond_right = (right_len <= dynamic_threshold) and (seq_mods[seq_id] + right_len <= seq_limits[seq_id])
+                elif orphan_method in ["adaptive_2", "adaptive_3"]:
                     cond_right = (right_len <= dynamic_threshold) and (gap_count_right > dynamic_threshold) and (seq_mods[seq_id] + right_len <= seq_limits[seq_id])
                 else:
                     cond_right = (right_len < dynamic_threshold) and (gap_count_right > dynamic_threshold)
 
-                # APPLY REFINEMENT VETO (only for strict_adaptive)
-                if cond_right and orphan_method == "strict_adaptive":
+                # APPLY REFINEMENT VETO (only for adaptive_3)
+                if cond_right and orphan_method == "adaptive_3":
                     block_str_right = ''.join(seq_list[last_start:last_end])
                     if has_shared_homology(last_start, last_end, block_str_right, seq_id):
                         cond_right = False # Veto! Another terminal has this exact isolated block.
@@ -1338,7 +1347,7 @@ def delete_orphan_nucleotides2(alignment, orphan_threshold, log_changes=False, o
                 alignment_changed = True
                 alignment[seq_id] = ''.join(seq_list)
 
-        if orphan_method in ["adaptive", "strict_adaptive"]:
+        if orphan_method in adaptive_methods:
             if alignment_changed:
                 current_threshold = 1 # reset because merging might have created slightly larger new orphans
             else:
@@ -3114,7 +3123,9 @@ def prepDyn(input_file=None,
                              is not performed. Options:
                             - 'percentile': trim using the 25th percentile;
                             - 'integer': trim with a manual threshold.
-                            - 'adaptive': iteratively automate the threshold with a 5% cap rule.
+                            - 'adaptive_1': adaptive threshold with modification cap only.
+                            - 'adaptive_2': adaptive threshold with modification cap and gap check.
+                            - 'adaptive_3': adaptive threshold with modification cap, gap check, and shared homology check.
         orphan_threshold (int): Threshold used to trim orphan nucleotides if orphan_method = 'integer'.
         orphan_action (str): Action for orphan nucleotides. 'trim' (default) removes them. 
                              'push' moves them adjacent to the next block iteratively.
@@ -3478,8 +3489,9 @@ def prepDyn(input_file=None,
                                         seq_str = str(record.seq)
                                         padded_seq = seq_str + "-" * (max_length - len(seq_str))
                                         current_file_alignment[record.id] = padded_seq
-                                else:
-                                    raise
+                            except Exception as e:
+                                if os.path.exists(tmp_in_path): os.remove(tmp_in_path)
+                                if os.path.exists(tmp_out_path): os.remove(tmp_out_path)
                         finally:
                             if os.path.exists(tmp_in_path): os.remove(tmp_in_path)
                             if os.path.exists(tmp_out_path): os.remove(tmp_out_path)
@@ -3614,7 +3626,7 @@ def prepDyn(input_file=None,
                 alignment, orphan_log = delete_orphan_nucleotides2(alignment, orphan_threshold_val, log_changes=True, orphan_action=orphan_action, orphan_method="integer", orphan_limit=orphan_limit)
             else:
                 alignment = delete_orphan_nucleotides2(alignment, orphan_threshold_val, orphan_action=orphan_action, orphan_method="integer", orphan_limit=orphan_limit)
-        elif orphan_method in ["integer", "adaptive", "strict_adaptive"]:
+        elif orphan_method in ["integer", "adaptive_1", "adaptive_2", "adaptive_3"]:
             if log:
                 alignment, orphan_log = delete_orphan_nucleotides2(alignment, orphan_threshold, log_changes=True, orphan_action=orphan_action, orphan_method=orphan_method, orphan_limit=orphan_limit)
             else:

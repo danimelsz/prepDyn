@@ -188,20 +188,23 @@ Operationally, orphan nucleotides can be identified as contiguous nucleotide seg
 <details>
 <summary>Can I detect orphan nucleotides automatically?</summary>
 
-When a single orphan threshold is not feasible or visual inspection is too laborious in large datasets, adaptive orphan threshold methods are available using `orphan_method adaptive` or `orphan_method strict_adaptive`. Both methods use an iterative approach where the threshold is updated dynamically. The key difference is:
+When a single orphan threshold is not feasible or visual inspection is too laborious in large datasets, adaptive orphan threshold methods are available using `orphan_method adaptive_1`, `orphan_method adaptive_2`, or `orphan_method adaptive_3`. These methods use an iterative approach where the threshold is updated dynamically. The key difference is:
 
-- **`adaptive`**: Removes any orphan block meeting the size, gap, and modification criteria (iteratively automates threshold).
-- **`strict_adaptive`**: Same as `adaptive`, but also prevents deletion of orphan blocks that are shared with other sequences at the same position (safer, uses shared homology check).
+- **`adaptive_1`**: Uses block size and modification-budget criteria only.
+- **`adaptive_2`**: Same as the former `adaptive`; uses block size, modification-budget, and flanking-gap criteria.
+- **`adaptive_3`**: Same as the former `strict_adaptive`; uses block size, modification-budget, flanking-gap, and shared-string criteria.
 
-**How both adaptive methods work:**
+**How adaptive methods work:**
 
 a. **Budgeting**: Before doing anything, it calculates a fraction of the length of each sequence (defined by `orphan_limit`, default 5%), which is the maximum percentage of sequence allowed to be trimmed or realigned.
 
 b. **Starting threshold**: Instead of immediately using the user-provided `orphan_threshold`, the adaptive methods start their dynamic threshold at 1. The user-defined `orphan_threshold` acts as the maximum value of this dynamic threshold.
 
-c. **Iterative growth**: It enters a loop where it looks strictly at the outermost left and outermost right contiguous blocks of nucleotides for every sequence. For a block to be considered an orphan, it must meet three conditions: (1) the length of the block must be less than or equal to the current dynamic threshold, (2) the gap regions flanking the block must be longer than the dynamic threshold, and (3) modifying this block must not cause the sequence to exceed its modification budget (defined by `orphan_limit`). 
+c. **Iterative growth**: It enters a loop where it looks strictly at the outermost left and outermost right contiguous blocks of nucleotides for every sequence. For a block to be considered an orphan, it must meet two to four conditions depending on the adaptive method: (1) the length of the block must be less than or equal to the current dynamic threshold, and (2) modifying this block must not cause the sequence to exceed its modification budget (defined by `orphan_limit`).
 
-   For **`strict_adaptive`** only, there is an additional condition: (4) other orphan blocks sharing exactly the same sequence string cannot occur at the same position in other sequences (shared homology check).
+   For **`adaptive_2`** and **`adaptive_3`**, there is an additional condition: (3) the gap regions flanking the block must be longer than the dynamic threshold.
+
+   For **`adaptive_3`** only, there is an additional condition: (4) other orphan blocks sharing exactly the same sequence string cannot occur at the same position in other sequences (shared-string check).
 
    If these conditions are met, the `orphan_action` is conducted (either trimming or realignment). If a change was made anywhere in the alignment, the script resets the dynamic threshold back to 1. This is because trimming or pushing an outer block exposes a new outer block, which might be a tiny 1-nucleotide orphan. If no changes were made, it increments the dynamic_threshold by 1 and scans the alignment again.
 
