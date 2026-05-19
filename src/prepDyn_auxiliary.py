@@ -1212,6 +1212,36 @@ def delete_orphan_nucleotides2(alignment, orphan_threshold, log_changes=False, o
                 i += 1
         return blocks
 
+    def find_terminal_blocks(seq):
+        """Find only the outer two non-gap blocks on each side."""
+        seq_len = len(seq)
+        left_blocks = []
+        i = 0
+        while i < seq_len and len(left_blocks) < 2:
+            if seq[i] != '-':
+                start = i
+                while i < seq_len and seq[i] != '-':
+                    i += 1
+                left_blocks.append((start, i))
+            else:
+                i += 1
+
+        if len(left_blocks) < 2:
+            return None
+
+        right_blocks = []
+        i = seq_len - 1
+        while i >= 0 and len(right_blocks) < 2:
+            if seq[i] != '-':
+                end = i + 1
+                while i >= 0 and seq[i] != '-':
+                    i -= 1
+                right_blocks.append((i + 1, end))
+            else:
+                i -= 1
+
+        return left_blocks[0], left_blocks[1], right_blocks[1], right_blocks[0]
+
     # --- REFINEMENT STEP: Prevent deletion of shared isolated blocks ---
     def has_shared_homology(start, end, block_str, current_seq_id):
         """
@@ -1256,21 +1286,22 @@ def delete_orphan_nucleotides2(alignment, orphan_threshold, log_changes=False, o
             changed_this_seq = False
             
             while True:
-                blocks = find_blocks(seq_list)
-                if len(blocks) < 2:
+                terminal_blocks = find_terminal_blocks(seq_list)
+                if terminal_blocks is None:
                     break
                 
                 dynamic_threshold = current_threshold
 
                 # Left side (strictly targets the outermost left block)
-                first_start, first_end = blocks[0]
-                next_start = blocks[1][0]
+                first_block, next_block, prev_block, last_block = terminal_blocks
+                first_start, first_end = first_block
+                next_start = next_block[0]
                 gap_count_left = seq_list[first_end:next_start].count('-')
                 left_len = first_end - first_start
 
                 # Right side (strictly targets the outermost right block)
-                last_start, last_end = blocks[-1]
-                prev_end = blocks[-2][1]
+                last_start, last_end = last_block
+                prev_end = prev_block[1]
                 gap_count_right = seq_list[prev_end:last_start].count('-')
                 right_len = last_end - last_start
 
