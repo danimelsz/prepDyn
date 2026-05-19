@@ -162,7 +162,9 @@ Dynamic homology implemented in **POY/PhyG** is NP-hard. If sequences are too lo
 <details>
 <summary>What are multi-amplicons?</summary>
 
-In many cases, sequences are available for a few genes but not others. In this case, missing data should be indicated with the string "NA" in the CSV cell. CSV cells may contain either GenBank accession numbers or local sequence-file paths (absolute or relative), and the same table can mix both sources. For multi-amplicons, GenBank accession numbers may be delimited with `/` or `|`, while local file paths should be delimited with `|`. These multi-amplicons can partially or fully share overlapping sequences. prepDyn allows overlapping regions from one of the sequences to be deleted or compute the consensus sequence.
+In many cases, sequences are available for a few genes but not others. In this case, missing data should be indicated with the string "NA" in the CSV cell (or empty cells). CSV cells may contain either GenBank accession numbers or local sequence-file paths (absolute or relative), and the same table can mix both sources. For multi-amplicons, GenBank accession numbers may be delimited with `/` or `|`, while local file paths should be delimited with `|`. These multi-amplicons can be classified as non-overlapping or overlapping. If overlapping, the overlapping nucleotides from one of the amplicons are deleted or consensus is called. If non-overlapping, the intersequence dashes are replaced with question marks (internal missing data).
+
+It is also possible to force the classification of multi-amplicons as overlapping by using the delimiter `(O)` (e.g. MF624199(O)MF624174) or non-overlapping by using the delimiter `(N)` (e.g. MF624199(N)MF624174).
 
 </details>
 
@@ -217,10 +219,7 @@ c. **Iterative growth**: It enters a loop where it looks strictly at the outermo
 <details>
 <summary>Can I specify more than one gene in the same column in the CSV file?</summary>
 
-We recommend only specifying a single gene in each column in the CSV input file. However, 
-if analyzing the mitochondrial H1 region containing both 12S and 16S genes, you should always list them in the same order (e.g., "12S_accession/16S_accession") for all sequences in the CSV. If some sequences have them as "12S/16S" while others have "16S/12S", the sequences will be misaligned, leading to incorrect orthology assignments and biased phylogenetic results.
-
-**Recommendation**: Before creating your CSV input file, verify the gene order in your GenBank records and sort the accession numbers consistently across all rows. Use a consistent delimiter (either `/` or `|`) and maintain the same gene order for the entire dataset.
+We recommend only specifying a single gene in each column in the CSV input file. However, some systematists are used to treat 12S + tRNAVal + 16S as a single fragment called H1. If analyzing H1 amplified with more than one set of primers (multi-amplicons), you should always list 12S, tRNAVal, and 16S in the same order (e.g., "12S_accession/16S_accession") for all sequences in the column refering to H1 in CSV. If some sequences have them as "12S/16S" while others have "16S/12S", the sequences will be misaligned, leading to incorrect orthology assignments and biased phylogenetic results.
 
 </details>
 
