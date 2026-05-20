@@ -164,7 +164,17 @@ Dynamic homology implemented in **POY/PhyG** is NP-hard. If sequences are too lo
 
 In many cases, sequences are available for a few genes but not others. In this case, missing data should be indicated with the string "NA" in the CSV cell (or empty cells). CSV cells may contain either GenBank accession numbers or local sequence-file paths (absolute or relative), and the same table can mix both sources. For multi-amplicons, GenBank accession numbers may be delimited with `/` or `|`, while local file paths should be delimited with `|`. These multi-amplicons can be classified as non-overlapping or overlapping. If overlapping, the overlapping nucleotides from one of the amplicons are deleted or consensus is called. If non-overlapping, the intersequence dashes are replaced with question marks (internal missing data).
 
-It is also possible to force the classification of multi-amplicons as overlapping by using the delimiter `(O)` (e.g. MF624199(O)MF624174) or non-overlapping by using the delimiter `(N)` (e.g. MF624199(N)MF624174).
+It is also possible to force the classification of multi-amplicons as **overlapping** by replacing the standard delimiter with `(O)` (e.g., `MF624199(O)MF624174` for GenBank accessions or `file1.fas(O)file2.fas` for local files) or as **non-overlapping** by using `(N)` (e.g., `MF624199(N)MF624174` or `file1.fas(N)file2.fas`). Without these markers, classification is automatic based on sequence overlap detection.
+
+When using the `(O)` marker:
+- The sequences are **automatically aligned using MAFFT**
+- The alignment is used to identify the overlapping region
+- Overlapping nucleotides are deleted (if `-maa trim`) or consensus is called (if `-maa consensus`)
+- This approach is robust to sequence divergence and handles overlaps that automatic detection might miss
+
+Without using markers:
+- Overlap detection is automatic using the parameters `-mr` (mismatch rate) and `-mo` (minimum overlap length)
+- Classification depends on detecting sequence overlaps in the raw (unaligned) sequences
 
 </details>
 

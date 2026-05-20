@@ -13,9 +13,9 @@ List of parameters in prepDyn scripts. Parameters can be either specified with l
 | `MSA` or `msa`                      | `bool`                | `False`          | Perform a multiple sequence alignment when `input_file` contains unaligned sequences. Ignored if `CSV_input` is used. |
 | `aligner` or `a`                    | `str`                 | `"mafft"`        | Multiple sequence aligner to use when alignment is performed: `mafft` or `clustalw`. |
 | `sequence_names` or `s`             | `bool`                | `True`           | Write a file with sequence names. Useful for taxon sampling in POY/PhyG. |
-| `multi_amplicon_min_overlap` or `mo`| `int`                 | `10`             | Minimum overlap length required to merge overlapping multi-amplicons downloaded from GenBank. |
-| `multi_amplicon_mismatch_rate` or `mr` | `float`            | `0.05`           | Maximum mismatch rate allowed when merging overlapping multi-amplicons from GenBank. |
-| `multi_amplicon_action` or `maa`    | `str`                 | `"trim"`         | How to handle overlapping multi-amplicons from GenBank: `trim` removes one overlapping copy, and `consensus` replaces the overlap with IUPAC consensus nucleotides. |
+| `multi_amplicon_min_overlap` or `mo`| `int`                 | `10`             | Minimum overlap length required to merge overlapping multi-amplicons downloaded from GenBank. Only used when overlap detection is automatic (no `(O)` marker). When `(O)` is specified in the CSV, MAFFT alignment is used instead. |
+| `multi_amplicon_mismatch_rate` or `mr` | `float`            | `0.05`           | Maximum mismatch rate allowed when merging overlapping multi-amplicons from GenBank. Only used when overlap detection is automatic (no `(O)` marker). When `(O)` is specified in the CSV, MAFFT alignment is used instead. |
+| `multi_amplicon_action` or `maa`    | `str`                 | `"trim"`         | How to handle overlapping multi-amplicons from GenBank: `trim` removes one overlapping copy, and `consensus` replaces the overlap with IUPAC consensus nucleotides. This applies both to automatic overlap detection and when `(O)` is used in the CSV. |
 | `orphan_method` or `om`             | `str`                 | `None`           | Method to handle orphan nucleotides: `integer`, `percentile`, `adaptive_1`, `adaptive_2`, `adaptive_3`, or `None`. |
 | `orphan_threshold` or `ot`          | `int`                 | `10`             | Threshold used when `orphan_method='integer'`, and also the maximum dynamic threshold when `orphan_method` is `adaptive_1`, `adaptive_2`, or `adaptive_3`. |
 | `orphan_limit` or `ol`              | `float`               | `0.05`           | Modification limit as a fraction of sequence length for adaptive methods (default: 0.05 = 5%). Specifies the maximum proportion of a sequence that can be trimmed or realigned. |
@@ -44,9 +44,9 @@ List of parameters in prepDyn scripts. Parameters can be either specified with l
 | `log` or `l`                             | `bool`   | `True`      | Write wall and CPU time to a log file. |
 | `orphan_threshold` or `ot`               | `int`    | `10`        | Threshold used to clean orphan nucleotides. |
 | `aligner` or `a`                         | `str`    | `"mafft"`   | Multiple sequence aligner to use: `mafft` or `clustalw`. Install ClustalW with `conda install bioconda::clustalw`. |
-| `multi_amplicon_min_overlap` or `mo`     | `int`    | `10`        | Minimum overlap length required to merge overlapping multi-amplicons. |
-| `multi_amplicon_mismatch_rate` or `mr`   | `float`  | `0.05`      | Maximum mismatch rate allowed when merging overlapping multi-amplicons. |
-| `multi_amplicon_action` or `maa`         | `str`    | `"trim"`    | How to handle overlapping multi-amplicons: `trim` removes one overlapping copy, and `consensus` replaces the overlap with IUPAC consensus nucleotides. |
+| `multi_amplicon_min_overlap` or `mo`     | `int`    | `10`        | Minimum overlap length required to merge overlapping multi-amplicons. Only used when overlap detection is automatic (no `(O)` marker). When `(O)` is specified in the CSV, MAFFT alignment is used instead. |
+| `multi_amplicon_mismatch_rate` or `mr`   | `float`  | `0.05`      | Maximum mismatch rate allowed when merging overlapping multi-amplicons. Only used when overlap detection is automatic (no `(O)` marker). When `(O)` is specified in the CSV, MAFFT alignment is used instead. |
+| `multi_amplicon_action` or `maa`         | `str`    | `"trim"`    | How to handle overlapping multi-amplicons: `trim` removes one overlapping copy, and `consensus` replaces the overlap with IUPAC consensus nucleotides. This applies both to automatic overlap detection and when `(O)` is used in the CSV. |
 
 ## `UP2AP.py`
 

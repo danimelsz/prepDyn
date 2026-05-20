@@ -536,18 +536,20 @@ def _extract_manual_amplicon_classification(cell):
     - (N) means force non-overlapping treatment
     - No marker means automatic classification
     
+    The markers are replaced with '|' delimiter so that multi-amplicons are properly separated.
+    
     Returns:
         tuple: (cleaned_cell, classification) where classification is None, "overlapping", or "non-overlapping"
     """
     classification = None
     
-    # Check for (O) marker (force overlapping)
+    # Check for (O) marker (force overlapping) - replace with pipe delimiter
     if "(O)" in cell:
-        cell = cell.replace("(O)", "")
+        cell = cell.replace("(O)", "|")
         classification = "overlapping"
-    # Check for (N) marker (force non-overlapping)
+    # Check for (N) marker (force non-overlapping) - replace with pipe delimiter
     elif "(N)" in cell:
-        cell = cell.replace("(N)", "")
+        cell = cell.replace("(N)", "|")
         classification = "non-overlapping"
     
     return cell.strip(), classification
@@ -604,7 +606,158 @@ def _iupac_consensus_char(base1, base2):
 def _build_overlap_consensus(seq_left, seq_right):
     return "".join(_iupac_consensus_char(left, right) for left, right in zip(seq_left, seq_right))
 
-def merge_overlapping_sequences(seq_list, multi_amplicon_min_overlap=10, multi_amplicon_mismatch_rate=0.05, multi_amplicon_action="trim", labels=None, forced_classification=None):
+def _merge_multi_via_alignment(seq_list, labels, multi_amplicon_action, aligner="mafft"):
+    """
+    Merge multiple sequences using MAFFT alignment to identify and handle overlaps.
+    
+    Parameters:
+    -----------
+    seq_list : list
+        List of sequences to merge
+    labels : list
+        Labels for each sequence
+    multi_amplicon_action : str
+        "trim" to remove overlapping region from one sequence, "consensus" to use IUPAC consensus
+    aligner : str
+        Alignment tool to use (default "mafft")
+    
+    Returns:
+    --------
+    tuple: (merged_seq, merge_events, fragments_labels)
+        - merged_seq: the merged sequence result
+        - merge_events: list of merge event dictionaries
+        - fragments_labels: list of label lists showing how sequences were combined
+    """
+    import tempfile
+    import os
+    
+    merge_events = []
+    
+    # Create temporary directory and files
+    with tempfile.TemporaryDirectory() as temp_dir:
+        # Write input FASTA
+        input_fasta = os.path.join(temp_dir, "input.fasta")
+        with open(input_fasta, "w") as f:
+            for i, seq in enumerate(seq_list):
+                f.write(f">{i}\n{seq}\n")
+        
+        # Run alignment
+        output_fasta = os.path.join(temp_dir, "aligned.fasta")
+        run_multiple_sequence_alignment(input_fasta, output_fasta, aligner=aligner)
+        
+        # Parse aligned sequences
+        aligned_records = list(SeqIO.parse(output_fasta, "fasta"))
+        if len(aligned_records) != len(seq_list):
+            raise RuntimeError(f"Alignment failed: expected {len(seq_list)} sequences, got {len(aligned_records)}")
+        
+        # Extract alignment as list of strings (uppercase)
+        alignment = [str(record.seq).upper() for record in aligned_records]
+        
+        # Find the overlapping region
+        # Overlapping region = columns where all sequences have non-gap characters
+        aln_len = len(alignment[0])
+        
+        # For each sequence, find start and end positions (positions with actual bases, not gaps)
+        seq_positions = []
+        for aln_seq in alignment:
+            start_pos = None
+            end_pos = None
+            for pos in range(aln_len):
+                if aln_seq[pos] != '-':
+                    if start_pos is None:
+                        start_pos = pos
+                    end_pos = pos
+            seq_positions.append((start_pos, end_pos))
+        
+        # Find overlapping column range: where multiple sequences have non-gaps
+        overlap_start = None
+        overlap_end = None
+        sequences_with_bases_per_col = []
+        
+        for col in range(aln_len):
+            seqs_with_bases = sum(1 for aln_seq in alignment if aln_seq[col] != '-')
+            sequences_with_bases_per_col.append(seqs_with_bases)
+            
+            # Overlapping region is where >= 2 sequences have bases
+            if seqs_with_bases >= 2:
+                if overlap_start is None:
+                    overlap_start = col
+                overlap_end = col
+        
+        # If no overlap found, concatenate with Ns
+        if overlap_start is None or overlap_end is None:
+            merge_events.append({
+                "type": "classification_override",
+                "classification": "overlapping",
+                "labels": labels[:],
+                "reason": "Forced via (O) marker; no overlap detected in alignment, concatenating"
+            })
+            merged = "".join(seq_list)
+            return merged, merge_events, [labels]
+        
+        overlap_len = overlap_end - overlap_start + 1
+        
+        # Extract overlap region sequences (without gaps)
+        overlap_seqs = []
+        for i, aln_seq in enumerate(alignment):
+            overlap_region = aln_seq[overlap_start:overlap_end+1].replace('-', '')
+            overlap_seqs.append(overlap_region)
+        
+        # Build merged sequence based on action
+        # Start with first sequence up to (and including) overlap
+        merged_parts = []
+        
+        # Add sequences before overlap
+        for i in range(len(alignment)):
+            start_pos, end_pos = seq_positions[i]
+            # Add non-overlapping part before overlap column range
+            before_overlap = alignment[i][:overlap_start].replace('-', '')
+            if before_overlap:
+                merged_parts.append(before_overlap)
+                break  # Only take the first sequence's non-overlapping prefix
+        
+        # Handle the overlap region
+        if multi_amplicon_action == "consensus" and len(overlap_seqs) > 1:
+            # Build consensus from all overlap sequences
+            max_overlap_len = max(len(os) for os in overlap_seqs)
+            consensus = []
+            for pos in range(max_overlap_len):
+                chars = []
+                for os in overlap_seqs:
+                    if pos < len(os):
+                        chars.append(os[pos])
+                if chars:
+                    if len(chars) == 1:
+                        consensus.append(chars[0])
+                    else:
+                        consensus.append(_iupac_consensus_char(chars[0], chars[1] if len(chars) > 1 else chars[0]))
+            merged_parts.append("".join(consensus))
+        else:
+            # Trim action: just use the first sequence's overlap
+            merged_parts.append(overlap_seqs[0] if overlap_seqs else "")
+        
+        # Add sequences after overlap
+        for i in range(len(alignment)):
+            start_pos, end_pos = seq_positions[i]
+            # Add non-overlapping part after overlap column range
+            after_overlap = alignment[i][overlap_end+1:].replace('-', '')
+            if after_overlap:
+                merged_parts.append(after_overlap)
+                break  # Only take the last sequence's non-overlapping suffix
+        
+        merged = "".join(merged_parts)
+        
+        # Log the merge event
+        merge_events.append({
+            "type": "classification_override",
+            "classification": "overlapping",
+            "labels": labels[:],
+            "reason": f"Forced via (O) marker; merged via MAFFT alignment with {multi_amplicon_action} action (overlap length: {overlap_len}bp)"
+        })
+        
+        return merged, merge_events, [labels]
+
+def merge_overlapping_sequences(seq_list, multi_amplicon_min_overlap=10, multi_amplicon_mismatch_rate=0.05, multi_amplicon_action="trim", labels=None, forced_classification=None, aligner="mafft"):
     """
     Tries to merge a list of sequences by identifying overlaps.
     If some sequences don't overlap, they remain separate.
@@ -625,7 +778,7 @@ def merge_overlapping_sequences(seq_list, multi_amplicon_min_overlap=10, multi_a
     forced_classification : str or None
         Manual override for classification:
         - None: automatic classification based on overlap detection
-        - "overlapping": force attempt to merge sequences
+        - "overlapping": force attempt to merge sequences (uses relaxed overlap detection)
         - "non-overlapping": keep sequences separate without attempting merge
     """
     merge_log = []
@@ -650,20 +803,27 @@ def merge_overlapping_sequences(seq_list, multi_amplicon_min_overlap=10, multi_a
             })
         return seq_list, merge_log, [[label] for label in labels]
 
+    # When forced to overlapping, use MAFFT alignment to robustly detect and merge overlaps
+    if forced_classification == "overlapping":
+        try:
+            merged_seq, align_events, align_groups = _merge_multi_via_alignment(
+                seq_list, labels, multi_amplicon_action, aligner=aligner
+            )
+            merge_log.extend(align_events)
+            return [merged_seq], merge_log, align_groups
+        except Exception as e:
+            # If alignment fails, fall back to raw sequence detection with relaxed parameters
+            print(f"Warning: Alignment-based merge failed ({e}), falling back to raw sequence detection", file=sys.stderr)
+
+    # When NOT forced to overlapping, use automatic classification based on raw sequence overlap detection
+    effective_min_overlap = multi_amplicon_min_overlap
+    effective_mismatch_rate = multi_amplicon_mismatch_rate
+
     # Operate on upper case to ensure case-insensitive matching
     fragments = [
         {"seq": seq.upper(), "labels": [label]}
         for seq, label in zip(seq_list, labels)
     ]
-    
-    # If forced to overlapping, add a log entry indicating this
-    if forced_classification == "overlapping":
-        merge_log.append({
-            "type": "classification_override",
-            "classification": "overlapping",
-            "labels": labels[:],
-            "reason": "Forced to overlapping via (O) marker in CSV"
-        })
         
     merged_any = True
     while merged_any:
@@ -714,7 +874,7 @@ def merge_overlapping_sequences(seq_list, multi_amplicon_min_overlap=10, multi_a
                 max_k = min(len1, len2)
                 
                 # Check seq1 suffix matching seq2 prefix
-                for k in range(max_k, multi_amplicon_min_overlap - 1, -1):
+                for k in range(max_k, effective_min_overlap - 1, -1):
                     s1_suffix = seq1[-k:]
                     s2_prefix = seq2[:k]
                     
@@ -726,7 +886,7 @@ def merge_overlapping_sequences(seq_list, multi_amplicon_min_overlap=10, multi_a
                         merge_direction = "seq1_suffix_seq2_prefix"
                         break
                         
-                    max_mismatches = max(2, int(multi_amplicon_mismatch_rate * k))
+                    max_mismatches = max(2, int(effective_mismatch_rate * k))
                     mismatches = 0
                     for a, b in zip(s1_suffix, s2_prefix):
                         if a != b:
@@ -743,7 +903,7 @@ def merge_overlapping_sequences(seq_list, multi_amplicon_min_overlap=10, multi_a
                         
                 # Check seq2 suffix matching seq1 prefix
                 if not best_merged:
-                    for k in range(max_k, multi_amplicon_min_overlap - 1, -1):
+                    for k in range(max_k, effective_min_overlap - 1, -1):
                         s2_suffix = seq2[-k:]
                         s1_prefix = seq1[:k]
                         
@@ -755,7 +915,7 @@ def merge_overlapping_sequences(seq_list, multi_amplicon_min_overlap=10, multi_a
                             merge_direction = "seq2_suffix_seq1_prefix"
                             break
                             
-                        max_mismatches = max(2, int(multi_amplicon_mismatch_rate * k))
+                        max_mismatches = max(2, int(effective_mismatch_rate * k))
                         mismatches = 0
                         for a, b in zip(s2_suffix, s1_prefix):
                             if a != b:
@@ -840,7 +1000,14 @@ def _build_multi_amplicon_log(requested_sources, loaded_sources, failed_sources,
 
     if merge_events:
         for event in merge_events:
-            if event["type"] == "containment":
+            if event["type"] == "classification_override":
+                # Handle forced classification events
+                sources_str = "/".join(event["labels"])
+                if event["classification"] == "non-overlapping":
+                    lines.append(f"Classification override (forced non-overlapping): {sources_str}")
+                elif event["classification"] == "overlapping":
+                    lines.append(f"Classification override (forced overlapping): {sources_str}")
+            elif event["type"] == "containment":
                 removed = "/".join(event["removed_labels"])
                 kept = "/".join(event["kept_labels"])
                 deleted = _format_deleted_string_for_log(event["deleted_string"])
@@ -1000,7 +1167,8 @@ def GB2MSA_1(input_file, output_prefix, delimiter=',', write_names=True, multi_a
                     multi_amplicon_mismatch_rate=multi_amplicon_mismatch_rate,
                     multi_amplicon_action=multi_amplicon_action,
                     labels=loaded_sources,
-                    forced_classification=amplicon_classification
+                    forced_classification=amplicon_classification,
+                    aligner=aligner
                 )
 
                 gb1_logs[gene_name][seq_name] = {
