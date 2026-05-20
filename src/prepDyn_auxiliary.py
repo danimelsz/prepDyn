@@ -1030,8 +1030,6 @@ def _build_multi_amplicon_log(requested_sources, loaded_sources, failed_sources,
                     lines.append(
                         f"Overlapping: {left} with {right}; overlap {event['overlap_length']} bp{mismatch_note}; deleted string ({event['deleted_length']} bp): {deleted}"
                     )
-    else:
-        lines.append("Overlapping: none detected among loaded multi-amplicon sequences.")
 
     if len(final_groups) > 1:
         lines.append(f"Non-overlapping groups retained as separate fragments: {_format_amplicon_groups_for_log(final_groups)}")
