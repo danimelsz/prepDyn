@@ -18,13 +18,19 @@ Copyright (C) Daniel Y. M. Nakamura 2026
 The easiest way to install **prepDyn** is creating a new environment in Conda:
 
 ```bash
+# Create environment
 conda create -n prepdyn -c dnakamuraz -c bioconda -c conda-forge prepdyn
+
+# Activate environment
+conda activate prepdyn
 ```
 
 Keep it updated:
 
 ```bash
+conda deactivate prepdyn
 conda update -c dnakamuraz prepdyn
+conda activate prepdyn
 ```
 
 ### Docker
