@@ -21,20 +21,18 @@ The easiest way to install **prepDyn** is creating a new environment in Conda:
 # Create environment
 conda create -n prepdyn -c dnakamuraz -c bioconda -c conda-forge prepdyn
 
-# Activate environment
+# Activate
 conda activate prepdyn
+
+# Test
+python -m prepDyn
 ```
 
 Keep it updated:
 
 ```bash
-# Deactivate the environmnt
 conda deactivate prepdyn
-
-# Update
 conda update -c dnakamuraz prepdyn
-
-# Activate the environment
 conda activate prepdyn
 ```
 
