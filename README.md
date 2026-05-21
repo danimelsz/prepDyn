@@ -28,14 +28,19 @@ conda activate prepdyn
 Keep it updated:
 
 ```bash
+# Deactivate the environmnt
 conda deactivate prepdyn
+
+# Update
 conda update -c dnakamuraz prepdyn
+
+# Activate the environment
 conda activate prepdyn
 ```
 
 ### Docker
 
-You can also run **prepDyn** inside a container with Docker. First, pull the published image from GitHub Container Registry (GHCR):
+You can also run **prepDyn** inside a container with Docker. First, open the Docker software. Then, pull the published image from GitHub Container Registry (GHCR):
 
 ```bash
 docker pull ghcr.io/dnakamuraz/prepdyn:latest
