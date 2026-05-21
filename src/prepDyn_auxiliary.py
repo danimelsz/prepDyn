@@ -998,15 +998,19 @@ def _build_multi_amplicon_log(requested_sources, loaded_sources, failed_sources,
         lines.append("Overlap classification: not enough loaded amplicons to evaluate overlap.")
         return lines
 
+    # Track if we've seen forced non-overlapping classification
+    has_forced_non_overlapping = False
+
     if merge_events:
         for event in merge_events:
             if event["type"] == "classification_override":
-                # Handle forced classification events
+                # Handle forced classification events with simplified format
                 sources_str = "/".join(event["labels"])
                 if event["classification"] == "non-overlapping":
-                    lines.append(f"Classification override (forced non-overlapping): {sources_str}")
+                    lines.append(f"Non-overlapping (forced): {sources_str}")
+                    has_forced_non_overlapping = True
                 elif event["classification"] == "overlapping":
-                    lines.append(f"Classification override (forced overlapping): {sources_str}")
+                    lines.append(f"Overlapping (forced): {sources_str}")
             elif event["type"] == "containment":
                 removed = "/".join(event["removed_labels"])
                 kept = "/".join(event["kept_labels"])
@@ -1031,10 +1035,10 @@ def _build_multi_amplicon_log(requested_sources, loaded_sources, failed_sources,
                         f"Overlapping: {left} with {right}; overlap {event['overlap_length']} bp{mismatch_note}; deleted string ({event['deleted_length']} bp): {deleted}"
                     )
 
-    if len(final_groups) > 1:
-        lines.append(f"Non-overlapping groups retained as separate fragments: {_format_amplicon_groups_for_log(final_groups)}")
-    else:
-        lines.append("Non-overlapping groups retained as separate fragments: none")
+    # Only report non-overlapping groups if there are actually multiple groups remaining
+    # (meaning some amplicons did not merge). Skip if forced non-overlapping was already reported.
+    if len(final_groups) > 1 and not has_forced_non_overlapping:
+        lines.append(f"Non-overlapping: {_format_amplicon_groups_for_log(final_groups)}")
 
     return lines
 
