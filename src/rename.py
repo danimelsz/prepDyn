@@ -23,7 +23,7 @@ def load_synonyms(synonym_file):
                     synonyms[old_name] = new_name
     return synonyms
 
-def rename_matrix(matrix_file, synonyms, output_file):
+def rename_matrix(matrix_file, synonyms, output_file, log_file=None):
     """
     Replaces occurrences of old names with new names in the matrix file.
     """
@@ -34,20 +34,30 @@ def rename_matrix(matrix_file, synonyms, output_file):
     # (e.g., we want to replace 'sp1_old_name2' before 'sp1_old_name')
     sorted_old_names = sorted(synonyms.keys(), key=len, reverse=True)
 
+    log_lines = []
     for old_name in sorted_old_names:
         new_name = synonyms[old_name]
-        # Perform a direct string replacement. This works well for Fasta, Nexus, and TNT formats
-        # because terminal names usually don't overlap with sequence characters or matrix syntax.
-        content = content.replace(old_name, new_name)
+        
+        count = content.count(old_name)
+        if count > 0:
+            log_lines.append(f"Replaced {count} occurrence(s) of '{old_name}' with '{new_name}'")
+            # Perform a direct string replacement. This works well for Fasta, Nexus, and TNT formats
+            # because terminal names usually don't overlap with sequence characters or matrix syntax.
+            content = content.replace(old_name, new_name)
         
     with open(output_file, 'w') as f:
         f.write(content)
+
+    if log_file and log_lines:
+        with open(log_file, 'w') as f:
+            f.write("\n".join(log_lines) + "\n")
 
 def main():
     parser = argparse.ArgumentParser(description="Rename terminal names in a matrix based on a list of synonyms.")
     parser.add_argument("-s", "--synonym", required=True, help="Text file containing list of new name in first column, separated by space/tab/comma of synonyms.")
     parser.add_argument("-m", "--matrix", required=True, help="Fasta, tnt, or nexus input file.")
     parser.add_argument("-o", "--output", help="Output file name. If not provided, will append '_renamed' to the input matrix filename.")
+    parser.add_argument("-l", "--log", action="store_true", help="If set, write a text file reporting all synonymizations made.")
 
     args = parser.parse_args()
 
@@ -59,8 +69,12 @@ def main():
         base, ext = os.path.splitext(args.matrix)
         output_file = f"{base}_renamed{ext}"
         
-    rename_matrix(args.matrix, synonyms, output_file)
+    log_file = f"{output_file}.log" if args.log else None
+        
+    rename_matrix(args.matrix, synonyms, output_file, log_file)
     print(f"Renamed matrix saved to: {output_file}")
+    if log_file:
+        print(f"Log saved to: {log_file}")
 
 if __name__ == "__main__":
     main()
