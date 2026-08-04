@@ -45,21 +45,21 @@ def rename_matrix(matrix_file, synonyms, output_file):
 
 def main():
     parser = argparse.ArgumentParser(description="Rename terminal names in a matrix based on a list of synonyms.")
-    parser.add_argument("synonym_input", help="Text file containing list of new name in first column, separated by space/tab/comma of synonyms.")
-    parser.add_argument("matrix_input", help="Fasta, tnt, or nexus input file.")
+    parser.add_argument("-s", "--synonym", required=True, help="Text file containing list of new name in first column, separated by space/tab/comma of synonyms.")
+    parser.add_argument("-m", "--matrix", required=True, help="Fasta, tnt, or nexus input file.")
     parser.add_argument("-o", "--output", help="Output file name. If not provided, will append '_renamed' to the input matrix filename.")
 
     args = parser.parse_args()
 
-    synonyms = load_synonyms(args.synonym_input)
+    synonyms = load_synonyms(args.synonym)
     
     if args.output:
         output_file = args.output
     else:
-        base, ext = os.path.splitext(args.matrix_input)
+        base, ext = os.path.splitext(args.matrix)
         output_file = f"{base}_renamed{ext}"
         
-    rename_matrix(args.matrix_input, synonyms, output_file)
+    rename_matrix(args.matrix, synonyms, output_file)
     print(f"Renamed matrix saved to: {output_file}")
 
 if __name__ == "__main__":
