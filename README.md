@@ -216,8 +216,8 @@ Operationally, orphan nucleotides can be identified as contiguous nucleotide seg
 When a single orphan threshold is not feasible or visual inspection is too laborious in large datasets, adaptive orphan threshold methods are available using `orphan_method adaptive_1`, `orphan_method adaptive_2`, or `orphan_method adaptive_3`. These methods use an iterative approach where the threshold is updated dynamically. The key difference is:
 
 - **`adaptive_1`**: Uses block size and modification-budget criteria only.
-- **`adaptive_2`**: Same as the former `adaptive`; uses block size, modification-budget, and flanking-gap criteria.
-- **`adaptive_3`**: Same as the former `strict_adaptive`; uses block size, modification-budget, flanking-gap, and shared-string criteria.
+- **`adaptive_2`**: Uses block size, modification-budget, and flanking-gap criteria.
+- **`adaptive_3`**: Uses block size, modification-budget, flanking-gap, and shared-string criteria.
 
 **How adaptive methods work:**
 
