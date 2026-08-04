@@ -90,6 +90,8 @@ def parse_n2question_leaves(value):
         return None
     elif value.lower() == "all":
         return "all"
+    elif value.lower() == "flanking":
+        return "flanking"
     else:
         return [leaf.strip() for leaf in value.split(",")]
 

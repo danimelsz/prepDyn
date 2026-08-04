@@ -3280,22 +3280,43 @@ def addSeq(
 
     n2q_log = []
     if n2question:
-        if isinstance(n2question, str) and n2question != 'all':
+        if isinstance(n2question, str) and n2question not in ('all', 'flanking'):
             target_ids = {n2question}
         elif isinstance(n2question, list):
             target_ids = set(n2question)
-        elif n2question == 'all':
+        elif n2question in ('all', 'flanking'):
             target_ids = {rec.id for rec in updated_records}
         else:
             target_ids = set()
 
         for rec in updated_records:
             if rec.id in target_ids:
-                seq_str = str(rec.seq)
-                count_n = seq_str.count('N') + seq_str.count('n')
-                if count_n > 0:
-                    rec.seq = Seq(seq_str.replace('N', '?').replace('n', '?'))
-                    n2q_log.append(f"{rec.id}: {count_n} N/n replaced with ?")
+                if n2question == 'flanking':
+                    seq_chars = list(str(rec.seq))
+                    count_n = 0
+                    for i in range(len(seq_chars)):
+                        if seq_chars[i] in ('N', 'n', '?', '-'):
+                            if seq_chars[i] in ('N', 'n'):
+                                seq_chars[i] = '?'
+                                count_n += 1
+                        else:
+                            break
+                    for i in range(len(seq_chars) - 1, -1, -1):
+                        if seq_chars[i] in ('N', 'n', '?', '-'):
+                            if seq_chars[i] in ('N', 'n'):
+                                seq_chars[i] = '?'
+                                count_n += 1
+                        else:
+                            break
+                    if count_n > 0:
+                        rec.seq = Seq(''.join(seq_chars))
+                        n2q_log.append(f"{rec.id}: {count_n} flanking N/n replaced with ?")
+                else:
+                    seq_str = str(rec.seq)
+                    count_n = seq_str.count('N') + seq_str.count('n')
+                    if count_n > 0:
+                        rec.seq = Seq(seq_str.replace('N', '?').replace('n', '?'))
+                        n2q_log.append(f"{rec.id}: {count_n} N/n replaced with ?")
 
     # === Now apply gaps2question as the very last step on added sequences ===
     def replace_gap_blocks(seq, threshold, seq_id=None):
